@@ -1,16 +1,37 @@
-# React + Vite
+# ChartForge
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Think-Cell for people who don’t want to draw the chart. Brief the AI like an engagement manager: it picks the exhibit, writes the action title, reconciles the bridge, labels every bar, and exports a 16:9 slide.
 
-Currently, two official plugins are available:
+## What it is
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+A consulting chart studio — McKinsey / BCG / Bain visual language — not a generic dashboard.
 
-## React Compiler
+- **Waterfall / bridge** with connectors and reconciling totals
+- **Stacked waterfall**, **Mekko**, **100% stacked**, **tornado**
+- **Line + CAGR**, **combo** (columns + margin line)
+- **Gantt** with milestones
+- **Scatter / bubble** with quadrant lines
+- Live **data sheet** (edit numbers, the slide redraws)
+- Export **PowerPoint, PNG, SVG, Excel**
+- Palettes: McKinsey, BCG, Bain, Think-Cell, mono
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## How to use it
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Open a **signature exhibit** from the gallery (no API key) and edit the data sheet.
+2. Or paste a **brief** with real numbers and generate.
+3. Or drop **Excel / CSV / PDF**. PDFs are extracted with Gemini.
+
+Generation uses a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). The key stays in your browser (`localStorage`).
+
+## Brief example
+
+> Build an EBIT bridge FY23–FY24: start 370, volume +14, price +31, mix +17, COGS −28, OpEx +8, end 412. $M. Action title on price/mix, not volume.
+
+## Stack
+
+React, Vite, D3, pptxgenjs, SheetJS, Papa Parse, Gemini 2.5 Pro.
