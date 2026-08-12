@@ -140,3 +140,25 @@ export function tableToChartData(chart, columns, rows) {
   }
   return next;
 }
+
+export function addTableRow(columns, rows) {
+  const next = columns.map((_, i) => (i === 0 ? "New" : "0"));
+  return [...rows, next];
+}
+
+export function addTableColumn(columns, rows, name) {
+  const label = name || `Series ${columns.length}`;
+  return {
+    columns: [...columns, label],
+    rows: rows.map((r) => [...r, "0"]),
+  };
+}
+
+export function deleteTableRow(rows, index) {
+  if (rows.length <= 1) return rows;
+  return rows.filter((_, i) => i !== index);
+}
+
+export function renameColumn(columns, index, name) {
+  return columns.map((c, i) => (i === index ? name : c));
+}

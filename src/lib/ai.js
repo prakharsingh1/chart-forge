@@ -136,3 +136,71 @@ export async function generateFromBrief(apiKey, brief, selectedTypes, customInst
   );
   return { insights, charts };
 }
+
+export async function fillDeckSlides(apiKey, deck, brief = "", customInstr = "") {
+  const catalog = (deck.slides || []).map((s, i) => ({
+    index: i,
+    title: s.title,
+    subtitle: s.subtitle,
+    text: [s.title, s.subtitle, s.body, ...(s.originalTexts || [])].filter(Boolean).join("\n").slice(0, 1800),
+  }));
+
+  const prompt = `${DESIGN_RULES}
+
+You are filling a live PowerPoint. Each slide must become a Think-Cell-quality exhibit with REAL numbers from that slide's text. Do not invent figures. If a slide has no quantitative content, skip it.
+
+DECK SLIDES:
+${JSON.stringify(catalog, null, 2)}
+
+${brief ? `USER BRIEF:\n${brief}\n` : ""}
+${customInstr ? `DIRECTION:\n${customInstr}\n` : ""}
+
+Return ONLY JSON:
+{
+  "insights": {
+    "title": "Deck title",
+    "executive_summary": "2 sentences",
+    "key_metrics": [{"name":"","value":"","trend":"up|down|stable"}],
+    "insights": ["",""],
+    "source": "Source: ..."
+  },
+  "slides": [
+    {
+      "index": 0,
+      "skip": false,
+      "title": "Action title",
+      "subtitle": "Metric, unit, period",
+      "source": "Source: ...",
+      "insight": "One line",
+      "chartType": "waterfall",
+      "unit": "$M",
+      "data": {}
+    }
+  ]
+}
+
+Use the same data shapes as generateChartData. Skip agenda/divider/backup slides (skip: true). Prefer waterfall, stacked/clustered bar, 100% stacked, Mekko, combo, line+CAGR for MBB work.`;
+
+  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12));
+  return parsed;
+}
+
+export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
+  const text = [slide.title, slide.subtitle, slide.body, ...(slide.originalTexts || [])].join("\n");
+  const types = chartType ? [chartType] : ["grouped_bar"];
+  const insights = {
+    executive_summary: brief || slide.title,
+    source: slide.source,
+    insights: [],
+    extracted_data: [],
+  };
+  const charts = await generateChartData(
+    apiKey,
+    { text, data: [], columns: [], type: "document" },
+    insights,
+    types,
+    brief,
+    `Fill this one PowerPoint slide with a consulting exhibit.\n${text}`
+  );
+  return charts[0];
+}

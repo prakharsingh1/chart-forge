@@ -71,10 +71,11 @@ a { color: inherit; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
-  max-width: 980px;
+  max-width: 1100px;
   margin: 0 auto 40px;
   padding: 0 20px;
 }
+.paths.four { grid-template-columns: repeat(4, 1fr); }
 .path {
   background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px;
   text-align: left; min-height: 150px;
@@ -100,7 +101,8 @@ a { color: inherit; }
 .demo-card h4 { margin: 6px 0 4px; font-size: 14px; }
 .demo-card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
 
-.studio { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 56px); }
+.studio { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 56px); }
+.studio.deck-mode { grid-template-columns: 260px minmax(0, 1fr) 340px; }
 .rail {
   border-right: 1px solid var(--line); background: #fff; padding: 16px;
   overflow: auto; max-height: calc(100vh - 56px);
@@ -154,9 +156,48 @@ textarea.field { min-height: 110px; resize: vertical; line-height: 1.45; }
   overflow: hidden; margin-bottom: 12px;
 }
 .slide-rule { height: 5px; background: var(--navy); }
-.slide-copy { padding: 16px 22px 0; }
-.slide-copy h3 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; }
-.slide-copy p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.slide-copy { padding: 14px 22px 0; }
+.slide-title-edit, .slide-sub-edit, .slide-src-edit {
+  width: 100%; border: none; background: transparent; outline: none; padding: 0;
+}
+.slide-title-edit { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.slide-sub-edit { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.slide-src-edit { font-size: 10px; color: #8c8c8c; }
+.slide-empty {
+  flex: 1; display: grid; place-items: center; color: var(--muted); font-size: 13px;
+  padding: 24px; text-align: center;
+}
+
+.filmstrip { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow: auto; }
+.thumb {
+  text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 8px 10px; display: grid; grid-template-columns: 18px 1fr; gap: 2px 8px;
+}
+.thumb span { font-size: 10px; font-weight: 700; color: var(--muted); grid-row: span 2; padding-top: 2px; }
+.thumb em { font-style: normal; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thumb small { font-size: 10px; color: var(--muted); text-transform: capitalize; }
+.thumb.on { border-color: var(--navy); background: #f3f6fb; }
+
+.inspector {
+  border-left: 1px solid var(--line); background: #fff; padding: 16px;
+  overflow: auto; max-height: calc(100vh - 56px);
+}
+.inspector h4 {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  margin: 16px 0 8px;
+}
+.inspector h4:first-child { margin-top: 0; }
+.inspector label.muted { display: block; margin-bottom: 6px; }
+.orig {
+  font-size: 11px; line-height: 1.45; white-space: pre-wrap; background: #fafafa;
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px; color: #444;
+  max-height: 180px; overflow: auto; font-family: "IBM Plex Mono", monospace;
+}
+.sheet-wrap { margin-bottom: 16px; }
+.sheet-tools { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.sheet th input { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
+.row-kill { width: 28px; }
+.row-kill .btn { padding: 2px 6px; }
 .slide-chart { flex: 1; min-height: 0; padding: 4px 12px 0; }
 .slide-foot {
   display: flex; justify-content: space-between; padding: 6px 22px 10px;
@@ -184,6 +225,10 @@ textarea.field { min-height: 110px; resize: vertical; line-height: 1.45; }
 .key-row { display: flex; gap: 8px; }
 .mono { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); }
 
+@media (max-width: 1100px) {
+  .paths.four { grid-template-columns: 1fr 1fr; }
+  .studio.deck-mode { grid-template-columns: 1fr; }
+}
 @media (max-width: 960px) {
   .paths, .gallery-grid { grid-template-columns: 1fr 1fr; }
   .studio { grid-template-columns: 1fr; }

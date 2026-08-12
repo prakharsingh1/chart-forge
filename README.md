@@ -1,37 +1,36 @@
 # ChartForge
 
-Think-Cell for people who don’t want to draw the chart. Brief the AI like an engagement manager: it picks the exhibit, writes the action title, reconciles the bridge, labels every bar, and exports a 16:9 slide.
+A Think-Cell competitor for power users who need McKinsey / BCG / Bain exhibits and don’t have time to draw them.
 
-## What it is
+Upload a **PPTX**. ChartForge reads the slides, pastes **native** waterfalls, clustered/stacked bars, Mekkos, combos, Gantts — and keeps every value editable. Download is a real PowerPoint file (Office charts + labeled shapes), not a flattened image.
 
-A consulting chart studio — McKinsey / BCG / Bain visual language — not a generic dashboard.
+## Why not screenshots
 
-- **Waterfall / bridge** with connectors and reconciling totals
-- **Stacked waterfall**, **Mekko**, **100% stacked**, **tornado**
-- **Line + CAGR**, **combo** (columns + margin line)
-- **Gantt** with milestones
-- **Scatter / bubble** with quadrant lines
-- Live **data sheet** (edit numbers, the slide redraws)
-- Export **PowerPoint, PNG, SVG, Excel**
-- Palettes: McKinsey, BCG, Bain, Think-Cell, mono
+Think-Cell wins because the chart is an object: change 412 to 430 and the bar moves. ChartForge does the same.
 
-## How to use it
+- **In the browser:** live data sheet (add rows/series, edit labels and numbers, the slide redraws)
+- **In PowerPoint:** clustered/stacked/100% bars, lines, pies, combos, and Excel-style waterfalls are **native charts** (right-click → Edit Data)
+- Mekko, Gantt, tornado, funnel export as **shapes with editable text**
+- Re-open the downloaded PPTX in ChartForge and the data round-trips (`ppt/chartforge/deck.json` + slide notes)
+
+## Workflow
+
+1. **Open PPTX** — filmstrip of your slides, original text preserved
+2. **AI-fill the deck** (Gemini) or **insert** a waterfall / clustered bar / Mekko yourself
+3. Edit the action title, subtitle, source, and every cell
+4. **Download PPTX (native)** — partner-ready 16:9, firm palettes (McKinsey, BCG, Bain)
+
+Gallery exhibits work with no API key. AI fill needs a [Gemini key](https://aistudio.google.com/apikey) stored only in your browser.
 
 ```bash
 npm install
 npm run dev
 ```
 
-1. Open a **signature exhibit** from the gallery (no API key) and edit the data sheet.
-2. Or paste a **brief** with real numbers and generate.
-3. Or drop **Excel / CSV / PDF**. PDFs are extracted with Gemini.
+## Chart set
 
-Generation uses a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). The key stays in your browser (`localStorage`).
-
-## Brief example
-
-> Build an EBIT bridge FY23–FY24: start 370, volume +14, price +31, mix +17, COGS −28, OpEx +8, end 412. $M. Action title on price/mix, not volume.
+Waterfall / stacked waterfall · stacked & 100% stacked columns · clustered columns · ranked bars · tornado · Marimekko · line + CAGR · stacked area · pie/donut · bubble map · combo · funnel · Gantt
 
 ## Stack
 
-React, Vite, D3, pptxgenjs, SheetJS, Papa Parse, Gemini 2.5 Pro.
+React, Vite, D3, pptxgenjs, JSZip, SheetJS, Gemini 2.5 Pro.

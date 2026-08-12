@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PALETTES, CHART_TYPES } from "./theme.js";
 import { extractTextFromFile } from "./lib/files.js";
-import { extractInsights, generateChartData, generateFromBrief } from "./lib/ai.js";
-import { chartToTable, tableToChartData } from "./lib/table.js";
+import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide } from "./lib/ai.js";
 import { renderChart } from "./charts/render.js";
 import { DEMOS } from "./data/demos.js";
-import { downloadDataUrl, downloadSvg, exportExcel, exportPptx, svgToPngDataUrl } from "./lib/export.js";
+import { downloadDataUrl, downloadSvg, exportExcel, svgToPngDataUrl } from "./lib/export.js";
 import { slug } from "./lib/format.js";
+import { importPptx, deckToFileContent } from "./lib/pptxImport.js";
+import { exportNativeDeck } from "./lib/nativePptx.js";
+import { deckFromCharts, emptySlide, uid } from "./lib/deck.js";
+import { blankChart } from "./lib/blanks.js";
+import DataSheet from "./components/DataSheet.jsx";
 
 function ChartCanvas({ chart, paletteKey }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !chart) return;
     const pal = PALETTES[paletteKey];
     const draw = () => renderChart(el, chart, pal);
     draw();
@@ -23,55 +27,38 @@ function ChartCanvas({ chart, paletteKey }) {
   return <div className="slide-chart" ref={ref} />;
 }
 
-function Slide({ chart, paletteKey }) {
+function SlideView({ slide, paletteKey, onPatch }) {
   return (
     <div className="slide">
       <div className="slide-rule" style={{ background: PALETTES[paletteKey].primary }} />
       <div className="slide-copy">
-        <h3>{chart.title}</h3>
-        {chart.subtitle && <p>{chart.subtitle}</p>}
+        <input
+          className="slide-title-edit"
+          value={slide.title}
+          onChange={(e) => onPatch({ title: e.target.value, chart: slide.chart ? { ...slide.chart, title: e.target.value } : slide.chart })}
+          placeholder="Action title — the so-what"
+        />
+        <input
+          className="slide-sub-edit"
+          value={slide.subtitle}
+          onChange={(e) => onPatch({ subtitle: e.target.value, chart: slide.chart ? { ...slide.chart, subtitle: e.target.value } : slide.chart })}
+          placeholder="Metric, unit, period, scope"
+        />
       </div>
-      <ChartCanvas chart={chart} paletteKey={paletteKey} />
+      {slide.chart ? (
+        <ChartCanvas chart={{ ...slide.chart, title: slide.title, subtitle: slide.subtitle }} paletteKey={paletteKey} />
+      ) : (
+        <div className="slide-empty">No chart on this slide yet. Insert one or let AI fill from the slide text.</div>
+      )}
       <div className="slide-foot">
-        <span>{chart.source || "Source: ChartForge analysis"}</span>
-        <span>{CHART_TYPES.find((t) => t.id === chart.chartType)?.name}</span>
+        <input
+          className="slide-src-edit"
+          value={slide.source}
+          onChange={(e) => onPatch({ source: e.target.value, chart: slide.chart ? { ...slide.chart, source: e.target.value } : slide.chart })}
+          placeholder="Source:"
+        />
+        <span>{slide.chart ? CHART_TYPES.find((t) => t.id === slide.chart.chartType)?.name : "Text slide"}</span>
       </div>
-    </div>
-  );
-}
-
-function DataSheet({ chart, onChange }) {
-  const table = useMemo(() => chartToTable(chart), [chart]);
-  const [rows, setRows] = useState(() => table.rows.map((r) => [...r]));
-
-  const setCell = (ri, ci, val) => {
-    const next = rows.map((r, i) => (i === ri ? r.map((c, j) => (j === ci ? val : c)) : r));
-    setRows(next);
-    onChange({ ...chart, data: tableToChartData(chart, table.columns, next) });
-  };
-
-  return (
-    <div className="sheet">
-      <table>
-        <thead>
-          <tr>
-            {table.columns.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {row.map((cell, ci) => (
-                <td key={ci}>
-                  <input value={cell ?? ""} onChange={(e) => setCell(ri, ci, e.target.value)} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -84,18 +71,20 @@ export default function App() {
   const [brief, setBrief] = useState("");
   const [file, setFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
-  const [insights, setInsights] = useState(null);
-  const [charts, setCharts] = useState([]);
+  const [deck, setDeck] = useState(null);
   const [selected, setSelected] = useState(0);
-  const [selectedTypes, setSelectedTypes] = useState(["waterfall", "stacked_bar", "line_trend"]);
-  const [autoMode, setAutoMode] = useState(true);
   const [customInstr, setCustomInstr] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadMsg, setLoadMsg] = useState("");
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef(null);
+  const pptxRef = useRef(null);
   const stageRef = useRef(null);
+
+  const slides = deck?.slides || [];
+  const active = slides[selected];
+  const insights = deck?.insights;
 
   const saveKey = () => {
     localStorage.setItem("gk", apiKey.trim());
@@ -107,73 +96,145 @@ export default function App() {
     setKeySet(false);
   };
 
-  const toggleType = (id) =>
-    setSelectedTypes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const patchSlide = (partial) => {
+    setDeck((d) => {
+      if (!d) return d;
+      const next = d.slides.map((s, i) => (i === selected ? { ...s, ...partial } : s));
+      return { ...d, slides: next };
+    });
+  };
+
+  const patchChart = (chart) => {
+    patchSlide({
+      chart,
+      title: chart.title ?? active?.title,
+      subtitle: chart.subtitle ?? active?.subtitle,
+      source: chart.source ?? active?.source,
+    });
+  };
 
   const openDemo = (demo) => {
-    setInsights(demo.insights);
-    setCharts(demo.charts.map((c) => ({ ...c })));
+    const pal = demo.firm === "BCG" ? "bcg" : demo.firm === "Bain" ? "bain" : "mckinsey";
+    setPalette(pal);
+    setDeck(deckFromCharts(`${demo.name}.pptx`, demo.charts, demo.insights));
     setSelected(0);
     setFile(null);
     setFileContent(null);
     setBrief("");
     setError("");
     setView("studio");
-    const pal = demo.firm === "BCG" ? "bcg" : demo.firm === "Bain" ? "bain" : "mckinsey";
-    setPalette(pal);
   };
 
-  const handleFile = useCallback(async (f) => {
-    setFile(f);
-    setError("");
-    setLoadMsg("Reading file…");
+  const handlePptx = async (f) => {
+    setLoadMsg("Opening PowerPoint…");
     setLoading(true);
+    setError("");
     try {
-      const content = await extractTextFromFile(f, apiKey);
-      if (!content.text && !content.data?.length) throw new Error("Nothing extractable in that file.");
-      setFileContent(content);
+      const imported = await importPptx(f);
+      setDeck(imported);
+      setFile(f);
+      setFileContent(deckToFileContent(imported));
+      setSelected(0);
+      setView("studio");
+      if (imported.roundTrip) setLoadMsg("");
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
       setLoadMsg("");
     }
-  }, [apiKey]);
+  };
+
+  const handleFile = useCallback(
+    async (f) => {
+      const ext = f.name.split(".").pop().toLowerCase();
+      if (ext === "pptx" || ext === "pptm") {
+        await handlePptx(f);
+        return;
+      }
+      setFile(f);
+      setError("");
+      setLoadMsg("Reading file…");
+      setLoading(true);
+      try {
+        const content = await extractTextFromFile(f, apiKey);
+        if (!content.text && !content.data?.length) throw new Error("Nothing extractable in that file.");
+        setFileContent(content);
+        setView("studio");
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+        setLoadMsg("");
+      }
+    },
+    [apiKey]
+  );
 
   const generate = async () => {
     setError("");
+    if (deck?.slides?.length && (brief.trim() || deck.slides.some((s) => (s.originalTexts || []).length))) {
+      if (!keySet || !apiKey.trim()) {
+        setError("Add a Gemini key to fill the deck. You can still insert blank charts and type values.");
+        return;
+      }
+      setLoading(true);
+      setLoadMsg("Designing native exhibits onto your slides…");
+      try {
+        const filled = await fillDeckSlides(apiKey, deck, brief, customInstr);
+        setDeck((d) => {
+          const slidesNext = d.slides.map((s, i) => {
+            const hit = (filled.slides || []).find((x) => x.index === i);
+            if (!hit || hit.skip) return s;
+            const chart = {
+              id: uid("chart"),
+              chartType: hit.chartType,
+              title: hit.title,
+              subtitle: hit.subtitle,
+              insight: hit.insight,
+              source: hit.source,
+              unit: hit.unit,
+              data: hit.data,
+            };
+            return { ...s, title: hit.title || s.title, subtitle: hit.subtitle || s.subtitle, source: hit.source || s.source, insight: hit.insight, chart };
+          });
+          return { ...d, insights: filled.insights || d.insights, slides: slidesNext };
+        });
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+        setLoadMsg("");
+      }
+      return;
+    }
+
     if (!brief.trim() && !fileContent) {
-      setError("Drop a file or write a brief — the same way you’d brief a Think-Cell operator.");
+      setError("Upload a PPTX, drop data, or write a brief.");
       return;
     }
     if (!keySet || !apiKey.trim()) {
-      setError("Add a Gemini API key to generate. Gallery charts work without one.");
+      setError("Add a Gemini API key to generate. Gallery and blank charts work without one.");
       return;
     }
     setLoading(true);
     setView("studio");
     try {
-      let ins = insights;
-      let types = autoMode ? [] : selectedTypes;
+      let types = [];
       if (brief.trim() && !fileContent) {
         setLoadMsg("Designing the deck from your brief…");
         const out = await generateFromBrief(apiKey, brief, types, customInstr);
-        ins = out.insights;
-        setInsights(ins);
-        setCharts(out.charts);
+        setDeck(deckFromCharts("ChartForge deck.pptx", out.charts, out.insights));
         setSelected(0);
         return;
       }
       setLoadMsg("Extracting the so-what…");
-      ins = await extractInsights(apiKey, fileContent, brief);
-      setInsights(ins);
-      types = autoMode
-        ? (ins.recommended_charts || []).map((c) => c.type).filter(Boolean).slice(0, 5)
-        : selectedTypes;
-      if (!types.length) types = ["waterfall", "horizontal_bar"];
-      setLoadMsg("Building Think-Cell charts…");
+      const ins = await extractInsights(apiKey, fileContent, brief);
+      types = (ins.recommended_charts || []).map((c) => c.type).filter(Boolean).slice(0, 5);
+      if (!types.length) types = ["waterfall", "grouped_bar"];
+      setLoadMsg("Building editable Think-Cell charts…");
       const configs = await generateChartData(apiKey, fileContent, ins, types, customInstr, brief);
-      setCharts(configs);
+      setDeck(deckFromCharts(file?.name || "ChartForge deck.pptx", configs, ins));
       setSelected(0);
     } catch (e) {
       setError(e.message);
@@ -183,10 +244,55 @@ export default function App() {
     }
   };
 
+  const fillActive = async () => {
+    if (!active) return;
+    if (!keySet) {
+      setError("Add a Gemini key to AI-fill this slide, or insert a blank chart and type the values.");
+      return;
+    }
+    setLoading(true);
+    setLoadMsg("Filling this slide…");
+    try {
+      const chart = await fillOneSlide(apiKey, active, brief || customInstr, "");
+      patchSlide({
+        chart,
+        title: chart.title,
+        subtitle: chart.subtitle,
+        source: chart.source,
+        insight: chart.insight,
+      });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      setLoadMsg("");
+    }
+  };
+
+  const insertChart = (type) => {
+    const chart = blankChart(type);
+    if (!deck) {
+      setDeck(deckFromCharts("ChartForge deck.pptx", [chart], null));
+      setSelected(0);
+      setView("studio");
+      return;
+    }
+    if (!active) return;
+    patchSlide({ chart, title: chart.title, subtitle: chart.subtitle, source: chart.source });
+  };
+
+  const addSlide = () => {
+    setDeck((d) => {
+      const base = d || { name: "ChartForge deck.pptx", slides: [], insights: null };
+      return { ...base, slides: [...base.slides, emptySlide(`Slide ${base.slides.length + 1}`)] };
+    });
+    setSelected(slides.length);
+    setView("studio");
+  };
+
   const reset = () => {
     setView("home");
-    setCharts([]);
-    setInsights(null);
+    setDeck(null);
     setFile(null);
     setFileContent(null);
     setBrief("");
@@ -194,35 +300,24 @@ export default function App() {
     setSelected(0);
   };
 
-  const updateChart = (next) => {
-    setCharts((cs) => cs.map((c, i) => (i === selected ? next : c)));
-  };
-
-  const exportDeck = async () => {
-    const nodes = stageRef.current?.querySelectorAll(".slide");
-    if (!nodes?.length) return;
-    const slides = [];
-    for (let i = 0; i < nodes.length; i++) {
-      const svg = nodes[i].querySelector("svg");
-      const png = svg ? await svgToPngDataUrl(svg) : null;
-      slides.push({ chart: charts[i], png });
-    }
-    await exportPptx(slides, PALETTES[palette].name);
+  const exportPpt = async () => {
+    if (!deck?.slides?.length) return;
+    await exportNativeDeck({ ...deck, name: deck.name || "ChartForge" }, palette);
   };
 
   const exportOnePng = async () => {
-    const svg = stageRef.current?.querySelectorAll(".slide")[selected]?.querySelector("svg");
-    if (!svg) return;
-    const png = await svgToPngDataUrl(svg, charts[selected].title);
-    downloadDataUrl(png, `${slug(charts[selected].title)}.png`);
+    const svg = stageRef.current?.querySelector(".slide svg");
+    if (!svg || !active?.chart) return;
+    const png = await svgToPngDataUrl(svg, active.title);
+    downloadDataUrl(png, `${slug(active.title)}.png`);
   };
 
   const exportOneSvg = () => {
-    const svg = stageRef.current?.querySelectorAll(".slide")[selected]?.querySelector("svg");
-    if (svg) downloadSvg(svg, charts[selected].title);
+    const svg = stageRef.current?.querySelector(".slide svg");
+    if (svg) downloadSvg(svg, active?.title);
   };
 
-  const active = charts[selected];
+  const charts = slides.map((s) => s.chart).filter(Boolean);
 
   return (
     <div className="app">
@@ -231,9 +326,18 @@ export default function App() {
         <div className="brand">
           <div className="mark">C</div>
           <h1>ChartForge</h1>
-          <span className="tag">Think-Cell AI</span>
+          <span className="tag">Think-Cell competitor</span>
         </div>
         <div className="top-actions">
+          <input ref={pptxRef} type="file" accept=".pptx,.pptm" hidden onChange={(e) => e.target.files[0] && handlePptx(e.target.files[0])} />
+          <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
+            Open PPTX
+          </button>
+          {deck && (
+            <button className="btn btn-sm btn-primary" onClick={exportPpt} disabled={loading}>
+              Download PPTX (native)
+            </button>
+          )}
           {keySet && <span className="mono">key ···{apiKey.slice(-4)}</span>}
           {keySet && (
             <button className="btn btn-sm btn-ghost" onClick={clearKey}>
@@ -251,17 +355,23 @@ export default function App() {
       {view === "home" && (
         <>
           <section className="hero">
-            <h2>McKinsey-grade charts, filled by AI — the way Think-Cell would, if it designed the slide.</h2>
+            <h2>Think-Cell’s competitor: upload the deck, get McKinsey-grade charts you can still edit.</h2>
             <p>
-              Brief it like an EM. Drop the Excel. ChartForge picks the chart, writes the action title, reconciles the
-              bridge, and puts numbers on every bar.
+              Not pictures. Native PowerPoint charts and labeled shapes — values stay live. Change a number in the data
+              sheet here, or Edit Data in PowerPoint after export. Built for people who need BCG/Bain/McKinsey depth and
+              don’t have an afternoon to draw the waterfall.
             </p>
           </section>
-          <div className="paths">
+          <div className="paths four">
+            <button className="path" onClick={() => pptxRef.current?.click()}>
+              <kbd>01 — PowerPoint</kbd>
+              <h3>Upload your PPTX</h3>
+              <p>We read every slide. AI pastes waterfalls, Mekkos, clustered bars onto the page. You edit every value.</p>
+            </button>
             <button className="path" onClick={() => setView("studio")}>
-              <kbd>01 — Brief</kbd>
-              <h3>Describe the slide</h3>
-              <p>Paste the so-what and the numbers. AI builds a waterfall, Mekko, Gantt, or CAGR line to partner standard.</p>
+              <kbd>02 — Brief</kbd>
+              <h3>Describe the exhibit</h3>
+              <p>Paste the so-what and the numbers. ChartForge builds a partner-ready slide with a live data sheet.</p>
             </button>
             <button
               className="path"
@@ -270,14 +380,14 @@ export default function App() {
                 setTimeout(() => fileRef.current?.click(), 50);
               }}
             >
-              <kbd>02 — Data</kbd>
-              <h3>Upload Excel, CSV, or PDF</h3>
-              <p>Extract tables and exhibits, then auto-select Think-Cell chart types from the evidence.</p>
+              <kbd>03 — Data</kbd>
+              <h3>Excel, CSV, or PDF</h3>
+              <p>Extract the evidence, then auto-build the chart types MBB actually uses.</p>
             </button>
             <button className="path" onClick={() => openDemo(DEMOS[0])}>
-              <kbd>03 — Gallery</kbd>
+              <kbd>04 — Gallery</kbd>
               <h3>Open a finished exhibit</h3>
-              <p>EBIT bridges, Mekkos, dual-axis combos — edit the data sheet and the slide updates live.</p>
+              <p>EBIT bridge, Mekko, Gantt, combo — edit the sheet, download a native PPTX.</p>
             </button>
           </div>
           <section className="gallery">
@@ -296,7 +406,7 @@ export default function App() {
       )}
 
       {view === "studio" && (
-        <div className="studio">
+        <div className={`studio ${deck ? "deck-mode" : ""}`}>
           <aside className="rail">
             {!keySet && (
               <>
@@ -315,7 +425,7 @@ export default function App() {
                   </button>
                 </div>
                 <p className="muted" style={{ marginTop: 8 }}>
-                  Gallery works without a key. Generation needs{" "}
+                  Blank charts and the gallery work offline. AI fill needs{" "}
                   <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
                     Gemini
                   </a>
@@ -324,12 +434,32 @@ export default function App() {
               </>
             )}
 
-            <h4>Brief</h4>
+            <h4>Deck</h4>
+            <p className="muted">{deck?.name || "Untitled"} · {slides.length} slides</p>
+            <div className="filmstrip">
+              {slides.map((s, i) => (
+                <button key={s.id} className={`thumb ${i === selected ? "on" : ""}`} onClick={() => setSelected(i)}>
+                  <span>{i + 1}</span>
+                  <em>{s.title || "Untitled"}</em>
+                  <small>{s.chart ? s.chart.chartType.replace(/_/g, " ") : "no chart"}</small>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button className="btn btn-sm" onClick={addSlide}>
+                + Slide
+              </button>
+              <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
+                Open PPTX
+              </button>
+            </div>
+
+            <h4>Brief / direction</h4>
             <textarea
               className="field"
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
-              placeholder="E.g. Build an EBIT bridge FY23–FY24: start 370, volume +14, price +31, mix +17, COGS −28, OpEx +8, end 412. $M. Action title on price/mix."
+              placeholder="How you’d brief a Think-Cell operator: EBIT bridge FY23–24, start 370, volume +14, price +31…"
             />
 
             <h4>Data file</h4>
@@ -350,14 +480,14 @@ export default function App() {
               <input
                 ref={fileRef}
                 type="file"
-                accept=".csv,.tsv,.xlsx,.xls,.pdf,.txt,.md"
+                accept=".pptx,.pptm,.csv,.tsv,.xlsx,.xls,.pdf,.txt,.md"
                 hidden
                 onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
               />
-              {file ? file.name : "Drop Excel, CSV, or PDF"}
+              {file ? file.name : "Drop PPTX, Excel, CSV, or PDF"}
             </div>
 
-            <h4>Palette</h4>
+            <h4>Firm palette</h4>
             <div className="palettes">
               {Object.entries(PALETTES).map(([key, p]) => (
                 <button key={key} className={`pal ${palette === key ? "on" : ""}`} onClick={() => setPalette(key)}>
@@ -371,43 +501,20 @@ export default function App() {
               ))}
             </div>
 
-            <h4>Chart types</h4>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-              <button className={`chip ${autoMode ? "on" : ""}`} onClick={() => setAutoMode(true)}>
-                Auto
-              </button>
-              <button className={`chip ${!autoMode ? "on" : ""}`} onClick={() => setAutoMode(false)}>
-                Manual
-              </button>
-            </div>
-            {!autoMode && (
-              <div className="chips">
-                {CHART_TYPES.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`chip ${selectedTypes.includes(t.id) ? "on" : ""}`}
-                    title={t.desc}
-                    onClick={() => toggleType(t.id)}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <h4>Direction (optional)</h4>
+            <h4>Direction</h4>
             <input
               className="field"
               value={customInstr}
               onChange={(e) => setCustomInstr(e.target.value)}
               placeholder="Force a Mekko; highlight top 5…"
             />
-
             <button className="btn btn-primary" style={{ width: "100%", marginTop: 16, justifyContent: "center" }} onClick={generate} disabled={loading}>
               {loading ? (
                 <>
                   <span className="spin" /> {loadMsg || "Working…"}
                 </>
+              ) : deck?.slides?.length ? (
+                "AI-fill this deck"
               ) : (
                 "Generate charts"
               )}
@@ -416,11 +523,11 @@ export default function App() {
           </aside>
 
           <main className="stage" ref={stageRef}>
-            {!charts.length && !loading && (
+            {!slides.length && !loading && (
               <div className="stage-head">
                 <div>
                   <h2>Empty board</h2>
-                  <p>Write a brief, drop data, or open a signature exhibit from the home gallery.</p>
+                  <p>Open a PPTX, insert a blank clustered bar, or generate from a brief. Nothing is flattened to an image.</p>
                 </div>
               </div>
             )}
@@ -431,22 +538,20 @@ export default function App() {
                   <h2>{insights.title}</h2>
                   <p>{insights.executive_summary}</p>
                 </div>
-                {charts.length > 0 && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button className="btn btn-sm" onClick={exportOnePng}>
-                      PNG
-                    </button>
-                    <button className="btn btn-sm" onClick={exportOneSvg}>
-                      SVG
-                    </button>
-                    <button className="btn btn-sm" onClick={() => exportExcel(charts, fileContent?.data)}>
-                      Excel
-                    </button>
-                    <button className="btn btn-sm btn-primary" onClick={exportDeck}>
-                      PowerPoint
-                    </button>
-                  </div>
-                )}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button className="btn btn-sm" onClick={exportOnePng}>
+                    PNG snapshot
+                  </button>
+                  <button className="btn btn-sm" onClick={exportOneSvg}>
+                    SVG
+                  </button>
+                  <button className="btn btn-sm" onClick={() => exportExcel(charts, fileContent?.data)}>
+                    Excel
+                  </button>
+                  <button className="btn btn-sm btn-primary" onClick={exportPpt}>
+                    PPTX · native objects
+                  </button>
+                </div>
               </div>
             )}
 
@@ -461,32 +566,70 @@ export default function App() {
               </div>
             )}
 
-            {insights?.insights?.length > 0 && (
-              <div className="insights">
-                {insights.insights.map((t, i) => (
-                  <div className="insight" key={i}>
-                    <strong>{i + 1}. </strong>
-                    {t}
-                  </div>
-                ))}
-              </div>
-            )}
+            {active && <SlideView slide={active} paletteKey={palette} onPatch={patchSlide} />}
+          </main>
 
-            {charts.map((chart, i) => (
-              <div key={chart.id || i} onClick={() => setSelected(i)} style={{ outline: i === selected ? "2px solid #2251ff" : "none", borderRadius: 4, marginBottom: 8 }}>
-                <Slide chart={chart} paletteKey={palette} />
-              </div>
-            ))}
-
+          <aside className="inspector">
+            <h4>This slide</h4>
+            {!active && <p className="muted">Select or add a slide.</p>}
             {active && (
               <>
-                <h4 className="muted" style={{ letterSpacing: "0.08em", textTransform: "uppercase", margin: "8px 0" }}>
-                  Data sheet — edit like Think-Cell; the slide redraws
-                </h4>
-                <DataSheet key={`${active.id}-${active.chartType}-${selected}`} chart={active} onChange={updateChart} />
+                <label className="muted">Chart type</label>
+                <select
+                  className="field"
+                  value={active.chart?.chartType || ""}
+                  onChange={(e) => {
+                    const t = e.target.value;
+                    if (!t) return;
+                    if (!active.chart) insertChart(t);
+                    else patchChart({ ...active.chart, chartType: t });
+                  }}
+                >
+                  <option value="">Insert…</option>
+                  {CHART_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="chips" style={{ marginTop: 8 }}>
+                  {["waterfall", "grouped_bar", "stacked_bar", "100_stacked", "marimekko", "combo", "gantt"].map((id) => (
+                    <button key={id} className="chip" onClick={() => insertChart(id)}>
+                      {CHART_TYPES.find((t) => t.id === id)?.name}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                  <button className="btn btn-sm" onClick={fillActive} disabled={loading}>
+                    AI fill this slide
+                  </button>
+                </div>
+                {active.chart && (
+                  <>
+                    <h4>Unit</h4>
+                    <input
+                      className="field"
+                      value={active.chart.unit || ""}
+                      onChange={(e) => patchChart({ ...active.chart, unit: e.target.value })}
+                      placeholder="$M, %, pp"
+                    />
+                    <h4>Values — live data sheet</h4>
+                    <DataSheet
+                      key={`${active.id}-${active.chart.id}-${active.chart.chartType}`}
+                      chart={active.chart}
+                      onChange={patchChart}
+                    />
+                  </>
+                )}
+                {!!(active.originalTexts || []).length && (
+                  <>
+                    <h4>Original slide text</h4>
+                    <pre className="orig">{active.originalTexts.join("\n")}</pre>
+                  </>
+                )}
               </>
             )}
-          </main>
+          </aside>
         </div>
       )}
     </div>
