@@ -676,6 +676,7 @@ export function renderGantt(container, data, pal) {
 import { EXTRA_RENDERERS } from "./extra.js";
 import { FINANCE_RENDERERS } from "./finance.js";
 import { COMPLEX_RENDERERS } from "./complex.js";
+import { PRO_RENDERERS } from "./pro.js";
 import { normalizeChartData } from "../lib/chartData.js";
 
 const RENDERERS = {
@@ -714,6 +715,7 @@ const RENDERERS = {
   ...EXTRA_RENDERERS,
   ...FINANCE_RENDERERS,
   ...COMPLEX_RENDERERS,
+  ...PRO_RENDERERS,
 };
 
 export function renderChart(container, chart, pal) {

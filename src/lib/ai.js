@@ -45,14 +45,16 @@ CHART DESIGN LAW (never break):
 Valid chartType values: ${CHART_TYPES.map((t) => t.id).join(", ")}`;
 
 const DATA_SHAPES = `DATA SHAPES (use these keys exactly):
-waterfall: {"items":[{"label":"FY23","value":120,"type":"total"},{"label":"Volume","value":18,"type":"increase"},{"label":"Cost","value":-9,"type":"decrease"},{"label":"FY24","value":129,"type":"total"}]}
-stacked_waterfall: {"items":[{"label":"FY23","type":"total","segments":[{"name":"A","value":80},{"name":"B","value":40}]},{"label":"Growth","type":"increase","segments":[{"name":"A","value":10},{"name":"B","value":5}]},{"label":"FY24","type":"total","segments":[{"name":"A","value":90},{"name":"B","value":45}]}]}
+waterfall: {"items":[{"label":"FY20","value":120,"type":"total"},{"label":"Volume","value":18,"type":"increase"},{"label":"Price","value":-9,"type":"decrease"},{"label":"Delta to target","value":22,"type":"hatch"},{"label":"FY21","value":151,"type":"total"}]}
+stacked_waterfall: {"items":[{"label":"FY20","type":"total","segments":[{"name":"A","value":80},{"name":"B","value":40}]},{"label":"Measures","type":"increase","segments":[{"name":"A","value":10},{"name":"B","value":5}]},{"label":"Delta","type":"hatch","value":20},{"label":"FY21","type":"total","segments":[{"name":"A","value":90},{"name":"B","value":45}]}]}
 stacked_bar / 100_stacked / grouped_bar: {"categories":["A","B"],"series":[{"name":"S1","values":[10,20]},{"name":"S2","values":[15,25]}]}
 horizontal_bar / pie_donut / treemap / lollipop / pareto: {"items":[{"label":"A","value":100},{"label":"B","value":80}]}
 tornado: {"categories":["Price","Volume"],"left":{"name":"Downside","values":[12,8]},"right":{"name":"Upside","values":[9,6]}}
 marimekko: {"categories":[{"label":"NA","width":45,"segments":[{"name":"Prem","value":60},{"name":"Core","value":40}]},{"label":"EU","width":35,"segments":[{"name":"Prem","value":40},{"name":"Core","value":60}]}]}
 line_trend / area_stacked / streamgraph: {"xLabels":["2019","2020","2021","2022"],"series":[{"name":"Revenue","values":[100,110,125,148]}]}
-scatter_bubble: {"points":[{"label":"A","x":12,"y":8,"size":40}],"xLabel":"Share %","yLabel":"Growth %","quadrants":true}
+scatter_bubble: {"points":[{"x":4,"y":0.32},{"x":8,"y":0.22},{"x":14,"y":0.14}],"xLabel":"Word count","yLabel":"Open rate","xMeanLabel":"Average word count","yMeanLabel":"Average open rate","band":{"x0":4,"x1":9}}
+bubble_matrix: {"rows":["A","B"],"cols":["West","East"],"cells":[{"row":"A","col":"West","size":80,"value":16},{"row":"A","col":"East","size":40,"value":9}],"breaks":[9,11,15],"colorLabel":"Cost % of revenue","sizeLabel":"Order volume"}
+sankey / alluvial: {"links":[{"source":"Mexico","target":"US Imports","value":518},{"source":"Mexico","target":"US Exports","value":322},{"source":"Canada","target":"US Imports","value":411}]}
 combo: {"categories":["Q1","Q2"],"bars":{"name":"Revenue","values":[100,120]},"line":{"name":"Margin %","values":[14,16]}}
 funnel: {"stages":[{"label":"Leads","value":10000},{"label":"SQL","value":2400},{"label":"Won","value":480}]}
 gantt: {"axis":["W1","W2","W3","W4"],"items":[{"label":"Diagnose","start":0,"end":2,"group":"Phase 1"}]}
@@ -327,7 +329,7 @@ DECK TEXT:
 ${(corpus || "").slice(0, 14000)}
 
 Produce 8 NEW, HARDER exhibits they do not already have. Prefer unused types from:
-stacked_waterfall, marimekko, mosaic, tornado, sankey, alluvial, combo, streamgraph, dumbbell, slope, heatmap, parallel_coords, icicle, pareto, bullet, forest, ridgeline, chord, hexbin, qq_plot, vol_surface, order_book, lorenz, pnl_calendar, fan_chart, brinson.
+stacked_waterfall, marimekko, mosaic, tornado, sankey, alluvial, combo, bubble_matrix, scatter_bubble, heatmap, parallel_coords, icicle, pareto, bullet, forest, ridgeline, chord, hexbin, qq_plot, vol_surface, order_book, lorenz, pnl_calendar, fan_chart, brinson.
 
 Do not repeat a chartType already listed. No pie, no kpi_cards, no gauge, no single-series bar. Use TABLE/CHART numbers (origin=deck). Add 2 origin=web industry exhibits that are still dense.
 

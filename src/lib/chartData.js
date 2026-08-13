@@ -101,6 +101,17 @@ export function normalizeChartData(chartType, raw = {}) {
   if (shape === "scatter" && !out.points?.length && items.length) {
     out.points = items.map((it, i) => ({ label: it.label, x: asNum(it.x ?? i), y: asNum(it.y ?? it.value), size: asNum(it.size) || 20 }));
   }
+  if (shape === "bubble_matrix") {
+    if (!out.cells?.length && out.rows?.length && Array.isArray(out.values)) {
+      const cols = out.cols || out.columns || [];
+      out.cells = [];
+      out.rows.forEach((r, ri) => {
+        cols.forEach((c, ci) => {
+          out.cells.push({ row: r, col: c, value: asNum(out.values[ri]?.[ci]), size: asNum(out.sizes?.[ri]?.[ci] ?? out.values[ri]?.[ci]) });
+        });
+      });
+    }
+  }
   if (shape === "funnel" && !out.stages?.length && items.length) {
     out.stages = items.map((it) => ({ label: it.label, value: it.value }));
   }
@@ -148,6 +159,7 @@ export function chartLooksFilled(data) {
   if ((data.stages || []).length) return true;
   if ((data.groups || []).length) return true;
   if ((data.links || []).length) return true;
+  if ((data.cells || []).length) return true;
   if ((data.p50 || []).length) return true;
   if ((data.bids || []).length || (data.asks || []).length) return true;
   if ((data.days || []).length || (data.sample || []).length) return true;

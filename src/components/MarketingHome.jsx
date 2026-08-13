@@ -1,7 +1,7 @@
 import { CHART_TYPES } from "../theme.js";
 import ChartThumb from "./ChartThumb.jsx";
 
-const FEATURED_IDS = ["fan_chart", "brinson", "corr_matrix", "vol_surface", "horizon", "waterfall"];
+const FEATURED_IDS = ["sankey", "scatter_bubble", "bubble_matrix", "waterfall", "fan_chart", "brinson"];
 
 const USE_CASES = [
   {

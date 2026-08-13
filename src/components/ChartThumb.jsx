@@ -394,13 +394,30 @@ function Mekko() {
   );
 }
 function Scatter() {
-  const pts = [[24, 48], [40, 28], [58, 36], [74, 18], [92, 30], [50, 52]];
+  const pts = [[22, 42], [30, 36], [38, 40], [46, 28], [54, 32], [62, 24], [70, 30], [82, 22], [94, 26]];
   return (
     <S>
       <line x1="10" y1="62" x2="110" y2="62" className="t-line" />
       <line x1="10" y1="10" x2="10" y2="62" className="t-line" />
+      <rect x="32" y="10" width="28" height="52" className="t-a" opacity="0.12" />
+      <line x1="18" y1="18" x2="100" y2="52" className="t-line" />
+      <line x1="48" y1="10" x2="48" y2="62" className="t-line" strokeDasharray="3 3" />
       {pts.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={i === 3 ? 8 : 5} className={i % 2 ? "t-a" : "t-b"} />
+        <circle key={i} cx={x} cy={y} r="4" className="t-a" opacity="0.7" />
+      ))}
+    </S>
+  );
+}
+function BubbleMatrix() {
+  const cells = [
+    [28, 18, 8], [48, 18, 6], [68, 18, 5], [88, 18, 7],
+    [28, 34, 6], [48, 34, 8], [68, 34, 4], [88, 34, 5],
+    [28, 50, 5], [48, 50, 4], [68, 50, 7], [88, 50, 6],
+  ];
+  return (
+    <S>
+      {cells.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} className={i % 4 === 0 ? "t-a" : "t-b"} opacity="0.85" />
       ))}
     </S>
   );
@@ -884,6 +901,7 @@ const BY_ID = {
   polar_area: Polar,
   marimekko: Mekko,
   scatter_bubble: Scatter,
+  bubble_matrix: BubbleMatrix,
   quadrant: Quadrant,
   beeswarm: Beeswarm,
   hexbin: Hexbin,

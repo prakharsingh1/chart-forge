@@ -76,6 +76,12 @@ export function chartToTable(chart) {
   if (shape === "sankey") {
     return { columns: ["Source", "Target", "Value"], rows: (d.links || []).map((l) => [l.source, l.target, l.value]) };
   }
+  if (shape === "bubble_matrix") {
+    return {
+      columns: ["Row", "Col", "Size", "Value"],
+      rows: (d.cells || []).map((c) => [c.row, c.col, c.size, c.value]),
+    };
+  }
   if (shape === "gauge") {
     return { columns: ["Metric", "Value"], rows: [["Value", d.value], ["Max", d.max], ["Target", d.target ?? ""]] };
   }
@@ -232,6 +238,10 @@ export function tableToChartData(chart, columns, rows) {
     next.values = rows.map((r) => r.slice(1).map(num));
   } else if (shape === "sankey") {
     next.links = rows.map((r) => ({ source: String(r[0] ?? ""), target: String(r[1] ?? ""), value: num(r[2]) }));
+  } else if (shape === "bubble_matrix") {
+    next.cells = rows.map((r) => ({ row: String(r[0] ?? ""), col: String(r[1] ?? ""), size: num(r[2]), value: num(r[3]) }));
+    next.rows = [...new Set(next.cells.map((c) => c.row))];
+    next.cols = [...new Set(next.cells.map((c) => c.col))];
   } else if (shape === "gauge") {
     const map = Object.fromEntries(rows.map((r) => [String(r[0]).toLowerCase(), r[1]]));
     next.value = num(map.value);
