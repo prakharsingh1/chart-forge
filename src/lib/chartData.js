@@ -65,6 +65,15 @@ export function normalizeChartData(chartType, raw = {}) {
   const shape = chartMeta(chartType).shape;
   const out = { ...d, categories, series, items };
 
+  if (shape === "kpis") {
+    const src = raw.items || raw.kpis || items;
+    out.items = (src || []).map((it) => ({
+      label: it.label || it.name || "",
+      value: it.value ?? it.val ?? it.v ?? "",
+      delta: it.delta || it.trend || "",
+    }));
+  }
+
   if ((shape === "series" || shape === "line" || chartType === "grouped_bar" || chartType === "grouped_horizontal") && !out.series.length && items.length) {
     out.categories = items.map((it) => it.label);
     out.series = [{ name: "Value", values: items.map((it) => asNum(it.value)) }];
@@ -140,5 +149,8 @@ export function chartLooksFilled(data) {
   if ((data.groups || []).length) return true;
   if ((data.links || []).length) return true;
   if ((data.p50 || []).length) return true;
+  if ((data.bids || []).length || (data.asks || []).length) return true;
+  if ((data.days || []).length || (data.sample || []).length) return true;
+  if ((data.matrix || []).length || (data.rows || []).length) return true;
   return false;
 }

@@ -418,8 +418,8 @@ export function renderMarimekko(container, data, pal) {
 
 export function renderLineTrend(container, data, pal, unit) {
   const labels = data.xLabels || [];
-  const series = data.series || [];
-  if (!labels.length) return;
+  const series = (data.series || []).filter((s) => Array.isArray(s.values) && s.values.length);
+  if (!labels.length || !series.length) return;
   const { W, H } = sizeOf(container);
   const M = { top: 28, right: 128, bottom: 44, left: 52 };
   const w = W - M.left - M.right;
@@ -431,8 +431,10 @@ export function renderLineTrend(container, data, pal, unit) {
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(all)), d3.max(all) * 1.18]).range([h, 0]);
   const color = d3.scaleOrdinal().domain(series.map((s) => s.name)).range(pal.series);
   gridY(g, y, w, pal);
-  series.forEach((s) => {
+  series.forEach((s, si) => {
     const line = d3.line().x((_, i) => x(labels[i])).y((d) => y(Number(d))).curve(d3.curveMonotoneX);
+    const area = d3.area().x((_, i) => x(labels[i])).y0(h).y1((d) => y(Number(d))).curve(d3.curveMonotoneX);
+    if (si === 0) g.append("path").datum(s.values).attr("d", area).attr("fill", color(s.name)).attr("opacity", 0.12);
     g.append("path").datum(s.values).attr("d", line).attr("fill", "none").attr("stroke", color(s.name)).attr("stroke-width", 2.4);
     s.values.forEach((v, i) => {
       g.append("circle").attr("cx", x(labels[i])).attr("cy", y(Number(v))).attr("r", 4).attr("fill", color(s.name)).attr("stroke", "#fff").attr("stroke-width", 1.5);

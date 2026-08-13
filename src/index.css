@@ -313,9 +313,16 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 }
 .origin.deck { background: rgba(200,245,66,.14); color: var(--accent); }
 .origin.web { background: rgba(109,94,246,.2); color: #c4b8ff; }
-.suggest-more { text-align: center; margin: 28px 0 8px; }
+.suggest-more {
+  text-align: center;
+  margin: 28px 0 8px;
+  padding: 22px;
+  border: 1px dashed rgba(200,245,66,.45);
+  border-radius: 20px;
+  background: rgba(200,245,66,.06);
+}
 .suggest-more .btn { min-width: 280px; justify-content: center; }
-.suggest-more p { margin: 10px auto 0; max-width: 520px; }
+.suggest-more p { margin: 10px auto 0; max-width: 560px; }
 .key-banner {
   display: flex; justify-content: space-between; gap: 16px; align-items: center;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;

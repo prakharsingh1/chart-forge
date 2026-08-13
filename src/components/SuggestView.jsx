@@ -89,6 +89,11 @@ export default function SuggestView({
               Re-run AI
             </button>
           )}
+          {keySet && (
+            <button className="btn btn-primary" onClick={onLoadMore} disabled={moreLoading || loading}>
+              {moreLoading ? "Loading more…" : "Load more complex charts"}
+            </button>
+          )}
         </div>
         {pack?.key_metrics?.length > 0 && (
           <div className="metrics" style={{ justifyContent: "center" }}>

@@ -1,6 +1,7 @@
 import { parseJsonLoose } from "./format.js";
 import { CHART_TYPES } from "../theme.js";
 import { normalizeChartData } from "./chartData.js";
+import { upgradeSuggestion, dropEmpty } from "./quality.js";
 
 const MODEL = "gemini-2.5-pro";
 
@@ -35,23 +36,32 @@ export async function geminiCall(apiKey, prompt, temperature = 0.15, { search = 
   return text;
 }
 
-const DESIGN_RULES = `You are a former hedge-fund risk PM and research scientist who builds institutional exhibits for IC, risk committee, and LP packs.
+const DESIGN_RULES = `You are a McKinsey/BCG exhibit designer AND a buy-side research scientist. You never ship a toy chart. Every exhibit must look like it belongs in an IC memo or a partner pack — dense, labeled, reconciled.
 
 CHART DESIGN LAW (never break):
-- Action title: the insight, not the chart type. "Selection, not allocation, drove 70bp of excess" — not "Brinson chart".
-- Subtitle: metric, unit, period, book/scope. "NAV, indexed 100, Jan-2019–Dec-2024, L/S equity"
-- Source: "Source: Fund ops; Bloomberg; ChartForge analysis" or the real source.
-- Use ONLY numbers present in the brief/data. Never invent figures. If a total is implied, compute it from given parts.
-- Every bar/point must have a label. Desk charts are read without a legend if possible.
-- Prefer HARD market charts when the data supports them: fan_chart, underwater, brinson, corr_matrix, ridgeline, yield_curve, ohlc, long_short, forest, cum_bench, rolling_metric, exposure_stack.
-- Cost / ops / CPG / supply-chain packs: waterfall, grouped_bar, stacked_bar, pie_donut, treemap, line_trend from TABLE and CHART blocks in the deck text.
-- series MUST be [{"name":"...","values":[numbers]}] — never "data" or "y". grouped_bar needs both categories and series.
-- Waterfalls: first and last items type=total. Middle items increase/decrease. Totals must reconcile (start + steps = end).
-- Horizontal bars: sort descending.
-- 100% stacked: each category sums to 100.
-- Correlation matrix: square, diagonal = 1, values in [-1, 1].
-- Fan: p10 ≤ p50 ≤ p90; actual may be shorter than the forecast.
+- Action title = the so-what. "Primary + inter-WH transit is 61% of optimal cost — not last-mile" — not "Treemap".
+- Subtitle = metric, unit, period, scope. "Network cost, ₹ Cr, FY24, Scenario 2 (17 WH)".
+- Source line required. Deck numbers origin=deck. Web numbers origin=web. Never mix in one series.
+- Use ONLY numbers in the deck TABLES/CHARTS or cited web sources. Compute implied totals. Never invent.
+- BAN these types unless the user clicked Load more: pie_donut, nested_donut, kpi_cards, gauge, progress_ring, waffle, win_loss, grouped_bar (unless ≥2 series), horizontal_bar, line_trend with a single series.
+- FIRST-PASS REQUIRED MIX (pick 10, cover the whole pack):
+  1) stacked_waterfall or waterfall — cost/value bridge that reconciles
+  2) marimekko or mosaic — size × mix
+  3) tornado — sensitivity / scenario upside-downside
+  4) sankey or alluvial — volume or cost flow
+  5) combo — columns + line (cost vs service, demand vs capacity)
+  6) 100_stacked or streamgraph — mix over time or scenarios
+  7) dumbbell or slope — as-is vs optimal
+  8) heatmap or parallel_coords — scenario × cost component or WH × metric
+  9) icicle or treemap — hierarchy of cost / network
+  10) pareto or lollipop or bullet — ranked drivers vs target
+- Ops / CPG / logistics: the mix above. Markets / risk: fan_chart, brinson, corr_matrix, ridgeline, yield_curve, vol_surface, order_book, qq_plot, forest.
+- series MUST be [{"name":"...","values":[numbers]}]. grouped_bar needs categories AND ≥2 series.
+- Waterfalls: first and last type=total. Middle increase/decrease. start + steps = end.
+- Horizontal / lollipop: sort descending. 100% stacked: each category sums to 100.
+- Combo needs both bars.values and line.values, same length as categories.
 - Titles ≤ 90 characters. Insight is one sentence.
+- At least 8 data points or 3 series whenever the deck supports it. Thin 4-bar charts are not acceptable when a table has more.
 
 Valid chartType values: ${CHART_TYPES.map((t) => t.id).join(", ")}`;
 
@@ -259,14 +269,14 @@ function hydrateSuggestion(s, i, prefix = "sug") {
       data = {};
     }
   }
-  const chartType = s.chartType || s.type || "grouped_bar";
-  return {
+  const chartType = s.chartType || s.type || "waterfall";
+  return upgradeSuggestion({
     ...s,
     id: s.id || `${prefix}_${i}_${Date.now().toString(36)}`,
     chartType,
     origin: s.origin === "web" ? "web" : "deck",
     data: normalizeChartData(chartType, data || {}),
-  };
+  });
 }
 
 export async function suggestFromDeck(apiKey, { corpus, industryHint, fileName }) {
@@ -307,21 +317,21 @@ Return ONLY JSON:
   ]
 }
 
-Produce 6–8 suggestions for the first screen (user can load more):
-- Prefer COMPLEX exhibits when numbers exist: waterfall, marimekko, treemap, icicle, corr_matrix, ridgeline, fan_chart, brinson, vol_surface, parallel_coords, qq_plot, order_book, horizon, mosaic, candles_volume.
-- At least 3 origin=deck from TABLE/CHART blocks
-- At least 2 origin=web
+Produce exactly 10 partner-grade exhibits that COVER THE WHOLE DECK (cost bridge, scenarios, mix, flow, seasonality, sensitivity, ranked drivers, industry context):
+- Follow the FIRST-PASS REQUIRED MIX in the design law. No pies. No KPI-card slides. No single-series clustered columns. No 4-item ranked bar when a richer type fits.
+- At least 7 origin=deck from TABLE/CHART blocks
+- At least 3 origin=web, still complex (heatmap, mekko, combo — not a skinny bar)
 Every suggestion MUST include a complete "data" object in the shape above so the preview can draw.
 Numbers must reconcile.`;
 
-  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12, { search: true }));
+  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.22, { search: true }));
   const suggestions = parsed.suggestions || parsed.charts || [];
   return {
     industry: parsed.industry || industryHint || "",
     industry_why: parsed.industry_why || "",
     executive_summary: parsed.executive_summary || "",
     key_metrics: parsed.key_metrics || [],
-    suggestions: suggestions.map((s, i) => hydrateSuggestion(s, i, "sug")),
+    suggestions: suggestions.map((s, i) => hydrateSuggestion(s, i, "sug")).filter(dropEmpty),
   };
 }
 
@@ -339,10 +349,10 @@ INDUSTRY: ${industryHint || ""}
 DECK TEXT:
 ${(corpus || "").slice(0, 14000)}
 
-Produce 6 NEW, MORE COMPLEX exhibits they do not already have. Prefer unused types from:
-qq_plot, horizon, vol_surface, order_book, parallel_coords, alpha_beta, style_box, icicle, sunburst, streamgraph, hexbin, chord, violin_returns, lorenz, candles_volume, pnl_calendar, liquidity_ladder, mosaic, fan_chart, corr_matrix, brinson, ridgeline, marimekko, treemap, forest.
+Produce 8 NEW, HARDER exhibits they do not already have. Prefer unused types from:
+stacked_waterfall, marimekko, mosaic, tornado, sankey, alluvial, combo, streamgraph, dumbbell, slope, heatmap, parallel_coords, icicle, pareto, bullet, forest, ridgeline, chord, hexbin, qq_plot, vol_surface, order_book, lorenz, pnl_calendar, fan_chart, brinson.
 
-Do not repeat a chartType already listed. Use TABLE/CHART numbers from the deck when possible (origin=deck). You may add 2 origin=web industry exhibits.
+Do not repeat a chartType already listed. No pie, no kpi_cards, no gauge, no single-series bar. Use TABLE/CHART numbers (origin=deck). Add 2 origin=web industry exhibits that are still dense.
 
 ${DATA_SHAPES}
 
@@ -352,6 +362,7 @@ Every item needs a complete data object.`;
   const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.18, { search: true }));
   const suggestions = (parsed.suggestions || parsed.charts || [])
     .filter((s) => !used.includes(s.chartType || s.type))
-    .map((s, i) => hydrateSuggestion(s, i, "more"));
+    .map((s, i) => hydrateSuggestion(s, i, "more"))
+    .filter(dropEmpty);
   return { suggestions };
 }
