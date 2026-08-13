@@ -15,4 +15,6 @@ Then: Authentication → URL Configuration
 
 Email confirmation is on, so new accounts must click the mail before login. Turn Confirm email off if you want instant sign-in.
 
-Railway is connected to GitHub `main`. Pushing `main` redeploys the site.
+Railway project: [courteous-manifestation](https://railway.com/project/29e1101f-615c-4620-b954-6ff7dfdc5fb0). Domain: https://chart-forge.up.railway.app
+
+If a GitHub push does not rebuild, in Railway press **Cmd/Ctrl+K → Deploy Latest Commit** (connected branch: `main`).
