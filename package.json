@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "vite --port 5178",
     "build": "vite build",
+    "start": "node server/index.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "chart.js": "^4.5.1",
     "d3": "^7.9.0",
+    "express": "^4.22.2",
     "jszip": "^3.10.1",
     "papaparse": "^5.5.3",
     "pptxgenjs": "^4.0.1",

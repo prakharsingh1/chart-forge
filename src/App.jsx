@@ -11,6 +11,9 @@ import { exportNativeDeck } from "./lib/nativePptx.js";
 import { deckFromCharts, emptySlide, uid } from "./lib/deck.js";
 import { blankChart } from "./lib/blanks.js";
 import DataSheet from "./components/DataSheet.jsx";
+import { useAuth } from "./auth/useAuth.js";
+import AuthScreen from "./auth/AuthScreen.jsx";
+import { deleteDeck, listDecks, loadDeck, saveDeck } from "./lib/db.js";
 
 function ChartCanvas({ chart, paletteKey }) {
   const ref = useRef(null);
@@ -64,6 +67,10 @@ function SlideView({ slide, paletteKey, onPatch }) {
 }
 
 export default function App() {
+  const { user, signOut, configured } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [savedDecks, setSavedDecks] = useState([]);
+  const [saveState, setSaveState] = useState("");
   const [view, setView] = useState("home");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gk") || "");
   const [keySet, setKeySet] = useState(() => !!localStorage.getItem("gk"));
@@ -333,6 +340,56 @@ export default function App() {
 
   const charts = slides.map((s) => s.chart).filter(Boolean);
 
+  const refreshDecks = useCallback(async () => {
+    if (!user) {
+      setSavedDecks([]);
+      return;
+    }
+    try {
+      setSavedDecks(await listDecks());
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshDecks();
+  }, [user, refreshDecks]);
+
+  useEffect(() => {
+    if (!user || !deck?.slides) return;
+    const t = setTimeout(async () => {
+      try {
+        setSaveState("Saving…");
+        const id = await saveDeck({
+          remoteId: deck.remoteId,
+          name: deck.name,
+          insights: deck.insights,
+          slides: deck.slides,
+          palette,
+        });
+        if (id && id !== deck.remoteId) setDeck((d) => (d ? { ...d, remoteId: id } : d));
+        setSaveState("Saved");
+        refreshDecks();
+      } catch (e) {
+        setSaveState(e.message || "Save failed");
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [user, deck, palette, refreshDecks]);
+
+  const openRemote = async (id) => {
+    try {
+      const loaded = await loadDeck(id);
+      setDeck(loaded);
+      if (loaded.palette) setPalette(loaded.palette);
+      setSelected(0);
+      setView("studio");
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   return (
     <div className="app">
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -355,7 +412,19 @@ export default function App() {
               Download PPTX (native)
             </button>
           )}
-          {keySet && <span className="mono">key ···{apiKey.slice(-4)}</span>}
+          {user ? (
+            <>
+              <span className="mono">{user.email}</span>
+              {saveState && <span className="mono">{saveState}</span>}
+              <button className="btn btn-sm btn-ghost" onClick={() => signOut()}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-sm btn-primary" onClick={() => setAuthOpen(true)}>
+              {configured ? "Log in" : "Log in"}
+            </button>
+          )}
           {keySet && (
             <button className="btn btn-sm btn-ghost" onClick={clearKey}>
               Change key
@@ -379,7 +448,9 @@ export default function App() {
               values, native PowerPoint out.
             </p>
             <div className="hero-cta">
-              <button className="btn btn-primary" onClick={() => setLibraryOpen(true)}>Browse {CHART_TYPES.length} charts</button>
+              <button className="btn btn-primary" onClick={() => (user ? setLibraryOpen(true) : setAuthOpen(true))}>
+                {user ? `Browse ${CHART_TYPES.length} charts` : "Log in to start"}
+              </button>
               <button className="btn" onClick={() => setView("studio")}>Open studio</button>
               <button className="btn btn-ghost" onClick={() => pptxRef.current?.click()}>Drop a PPTX</button>
             </div>
@@ -465,7 +536,42 @@ export default function App() {
               </>
             )}
 
-            <h4>Deck</h4>
+            <h4>Cloud decks</h4>
+            {!user && (
+              <p className="muted">
+                <button className="linkish" type="button" onClick={() => setAuthOpen(true)}>
+                  Log in
+                </button>{" "}
+                to save decks to Supabase.
+              </p>
+            )}
+            {user && (
+              <div className="filmstrip">
+                {savedDecks.map((d) => (
+                  <button key={d.id} className={`thumb ${deck?.remoteId === d.id ? "on" : ""}`} onClick={() => openRemote(d.id)}>
+                    <span>•</span>
+                    <em>{d.name}</em>
+                    <small>{new Date(d.updated_at).toLocaleDateString()}</small>
+                  </button>
+                ))}
+                {!savedDecks.length && <p className="muted">No saved decks yet — they appear after you edit.</p>}
+              </div>
+            )}
+            {user && deck?.remoteId && (
+              <button
+                className="btn btn-sm btn-ghost"
+                style={{ marginTop: 8 }}
+                onClick={async () => {
+                  await deleteDeck(deck.remoteId);
+                  setDeck(null);
+                  refreshDecks();
+                }}
+              >
+                Delete cloud copy
+              </button>
+            )}
+
+            <h4>This session</h4>
             <p className="muted">{deck?.name || "Untitled"} · {slides.length} slides</p>
             <div className="filmstrip">
               {slides.map((s, i) => (
@@ -667,6 +773,7 @@ export default function App() {
         </div>
       )}
 
+      {authOpen && <AuthScreen onClose={() => setAuthOpen(false)} />}
       {libraryOpen && (
         <div className="modal-bg" onClick={() => setLibraryOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>

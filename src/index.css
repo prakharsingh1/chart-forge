@@ -236,7 +236,11 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
   border-radius: 24px; padding: 22px;
 }
 .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
-.modal-head h3 { margin: 0; font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; }
+.auth-modal { max-width: 440px; }
+.auth-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.linkish {
+  background: none; border: none; padding: 0; color: var(--accent); font-weight: 700; text-decoration: underline;
+}
 
 @media (max-width: 1100px) {
   .paths, .gallery-grid, .lib-grid { grid-template-columns: 1fr 1fr; }
