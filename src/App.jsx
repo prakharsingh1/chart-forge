@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PALETTES, CHART_TYPES, CHART_CATS, chartMeta } from "./theme.js";
 import { extractTextFromFile } from "./lib/files.js";
-import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide, suggestFromDeck } from "./lib/ai.js";
+import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide, suggestFromDeck, suggestMoreFromDeck } from "./lib/ai.js";
 import { renderChart } from "./charts/render.js";
 import { DEMOS } from "./data/demos.js";
 import { downloadDataUrl, downloadSvg, exportExcel, svgToPngDataUrl } from "./lib/export.js";
@@ -81,6 +81,7 @@ export default function App() {
   const [palette, setPalette] = useState("forge");
   const [deckPal, setDeckPal] = useState(null);
   const [suggestPack, setSuggestPack] = useState(null);
+  const [moreLoading, setMoreLoading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libQuery, setLibQuery] = useState("");
   const [libCat, setLibCat] = useState("All");
@@ -155,6 +156,33 @@ export default function App() {
       }
     } catch (e) {
       setError(e.message);
+    }
+  };
+
+  const loadMoreSuggestions = async () => {
+    if (!deck) return;
+    const key = apiKey.trim() || localStorage.getItem("gk") || "";
+    if (!key) {
+      setError("Add a Gemini key to load more exhibits.");
+      return;
+    }
+    setMoreLoading(true);
+    setError("");
+    try {
+      const more = await suggestMoreFromDeck(key, {
+        corpus: deckCorpus(deck),
+        industryHint: suggestPack?.industry || guessIndustry(deckCorpus(deck)),
+        fileName: deck.name || file?.name,
+        existing: suggestPack?.suggestions || [],
+      });
+      setSuggestPack((p) => ({
+        ...(p || {}),
+        suggestions: [...(p?.suggestions || []), ...(more.suggestions || [])],
+      }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setMoreLoading(false);
     }
   };
 
@@ -609,6 +637,8 @@ export default function App() {
               setLoadMsg("");
             }
           }}
+          moreLoading={moreLoading}
+          onLoadMore={loadMoreSuggestions}
         />
       )}
 

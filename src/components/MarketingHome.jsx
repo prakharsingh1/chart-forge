@@ -3,16 +3,16 @@ import ChartThumb from "./ChartThumb.jsx";
 
 const FEATURED_IDS = [
   "fan_chart",
-  "underwater",
+  "vol_surface",
+  "order_book",
+  "qq_plot",
+  "parallel_coords",
   "brinson",
   "corr_matrix",
-  "ohlc",
-  "yield_curve",
-  "ridgeline",
-  "long_short",
-  "cum_bench",
-  "forest",
-  "exposure_stack",
+  "horizon",
+  "icicle",
+  "pnl_calendar",
+  "candles_volume",
   "waterfall",
 ];
 

@@ -174,11 +174,11 @@ const SHAPES = {
   }),
   ohlc: () => ({
     items: [
-      { label: "M", o: 102, h: 108, l: 101, c: 106 },
-      { label: "T", o: 106, h: 107, l: 99, c: 100 },
-      { label: "W", o: 100, h: 104, l: 98, c: 103 },
-      { label: "T", o: 103, h: 110, l: 102, c: 109 },
-      { label: "F", o: 109, h: 111, l: 105, c: 106 },
+      { label: "M", o: 102, h: 108, l: 101, c: 106, volume: 12 },
+      { label: "T", o: 106, h: 107, l: 99, c: 100, volume: 18 },
+      { label: "W", o: 100, h: 104, l: 98, c: 103, volume: 9 },
+      { label: "T", o: 103, h: 110, l: 102, c: 109, volume: 14 },
+      { label: "F", o: 109, h: 111, l: 105, c: 106, volume: 11 },
     ],
   }),
   ridgeline: () => ({
@@ -215,6 +215,43 @@ const SHAPES = {
       { label: "Mom", value: 0.11, low: -0.04, high: 0.27 },
       { label: "Qual", value: 0.34, low: 0.19, high: 0.48 },
     ],
+  }),
+  qq: () => ({ sample: [-1.4, -0.8, -0.3, 0.1, 0.4, 0.6, 0.9, 1.2, 1.8, 2.1] }),
+  horizon: () => ({
+    xLabels: ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12"],
+    values: [0.4, -0.8, 1.2, 0.3, -1.6, -0.4, 0.9, 1.5, -0.2, 0.6, -1.1, 0.3],
+    bands: 4,
+  }),
+  order_book: () => ({
+    bids: [
+      { price: 101.2, size: 40 },
+      { price: 101.1, size: 62 },
+      { price: 101.0, size: 88 },
+      { price: 100.8, size: 120 },
+    ],
+    asks: [
+      { price: 101.3, size: 36 },
+      { price: 101.4, size: 54 },
+      { price: 101.6, size: 90 },
+      { price: 101.9, size: 110 },
+    ],
+  }),
+  parallel: () => ({
+    axes: ["Vol", "Beta", "P/E", "Mom", "Quality"],
+    rows: [
+      { label: "AAPL", Vol: 22, Beta: 1.1, "P/E": 28, Mom: 8, Quality: 82 },
+      { label: "XOM", Vol: 18, Beta: 0.9, "P/E": 12, Mom: -2, Quality: 61 },
+      { label: "NVDA", Vol: 38, Beta: 1.6, "P/E": 45, Mom: 24, Quality: 77 },
+    ],
+  }),
+  style_box: () => ({
+    points: [
+      { label: "Fund", xLabel: "Growth", yLabel: "Large", size: 90 },
+      { label: "Bench", xLabel: "Blend", yLabel: "Large", size: 50 },
+    ],
+  }),
+  calendar_days: () => ({
+    days: Array.from({ length: 21 }, (_, i) => ({ label: String(i + 1), value: Math.round((Math.sin(i) * 12 + (i % 5) - 2) * 10) / 10 })),
   }),
 };
 

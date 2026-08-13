@@ -673,6 +673,7 @@ export function renderGantt(container, data, pal) {
 
 import { EXTRA_RENDERERS } from "./extra.js";
 import { FINANCE_RENDERERS } from "./finance.js";
+import { COMPLEX_RENDERERS } from "./complex.js";
 import { normalizeChartData } from "../lib/chartData.js";
 
 const RENDERERS = {
@@ -710,6 +711,7 @@ const RENDERERS = {
   timeline: renderGantt,
   ...EXTRA_RENDERERS,
   ...FINANCE_RENDERERS,
+  ...COMPLEX_RENDERERS,
 };
 
 export function renderChart(container, chart, pal) {

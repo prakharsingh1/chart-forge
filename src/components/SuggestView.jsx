@@ -60,6 +60,8 @@ export default function SuggestView({
   onPng,
   onPptxOne,
   onRetry,
+  moreLoading,
+  onLoadMore,
 }) {
   const suggestions = pack?.suggestions || [];
   return (
@@ -153,6 +155,23 @@ export default function SuggestView({
           );
         })}
       </div>
+
+      {keySet && (
+        <div className="suggest-more">
+          <button className="btn btn-primary" onClick={onLoadMore} disabled={moreLoading || loading}>
+            {moreLoading ? (
+              <>
+                <span className="spin" /> Designing more complex exhibits…
+              </>
+            ) : (
+              "Load more complex charts"
+            )}
+          </button>
+          <p className="muted">
+            QQ plots, vol surfaces, order books, parallel coordinates, icicles, Lorenz curves, P&L calendars — another batch from this deck.
+          </p>
+        </div>
+      )}
 
       {!!deck?.slides?.length && (
         <section className="suggest-slides">

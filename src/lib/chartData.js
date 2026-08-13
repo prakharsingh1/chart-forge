@@ -117,7 +117,15 @@ export function normalizeChartData(chartType, raw = {}) {
       h: asNum(it.h ?? it.high ?? it.value),
       l: asNum(it.l ?? it.low ?? it.value),
       c: asNum(it.c ?? it.close ?? it.value),
+      volume: asNum(it.volume ?? it.v),
     }));
+  }
+  if (shape === "qq" && !out.sample?.length) {
+    out.sample = (out.values || items.map((it) => it.value)).map(asNum);
+  }
+  if (shape === "horizon" && !out.values?.length && out.series[0]) out.values = out.series[0].values;
+  if (shape === "calendar_days" && !out.days?.length && items.length) {
+    out.days = items.map((it) => ({ label: it.label, value: it.value }));
   }
   return out;
 }

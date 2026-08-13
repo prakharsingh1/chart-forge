@@ -753,6 +753,100 @@ function Exposure() {
     </S>
   );
 }
+function Qq() {
+  return (
+    <S>
+      <line x1="18" y1="58" x2="100" y2="14" className="t-line" />
+      {[[28, 50], [40, 44], [52, 36], [64, 30], [76, 22], [88, 18]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3.5" className={i % 2 ? "t-b" : "t-a"} />
+      ))}
+    </S>
+  );
+}
+function Horizon() {
+  return (
+    <S>
+      {[0, 1, 2, 3].map((i) => (
+        <path key={i} d={`M8 ${58 - i * 10} C 28 ${40 - i * 8}, 50 ${62 - i * 6}, 72 ${36 - i * 4} S 110 ${48 - i * 6}, 112 ${50 - i * 8} L 112 ${66} L 8 66 Z`} className="t-a" opacity={0.2 + i * 0.15} />
+      ))}
+    </S>
+  );
+}
+function VolSurf() {
+  return (
+    <S>
+      {[0, 1, 2, 3].map((r) =>
+        [0, 1, 2, 3, 4].map((c) => (
+          <rect key={`${r}${c}`} x={16 + c * 18} y={10 + r * 14} width="16" height="12" rx="2" className={((r + c) % 3 === 0 ? "t-a" : (r + c) % 3 === 1 ? "t-b" : "t-c")} opacity={0.35 + ((r * c) % 5) * 0.1} />
+        ))
+      )}
+    </S>
+  );
+}
+function OrderBook() {
+  return (
+    <S>
+      {[48, 36, 28, 20].map((w, i) => (
+        <rect key={`b${i}`} x={60 - w} y={12 + i * 12} width={w} height="9" className="t-a" />
+      ))}
+      {[22, 30, 40, 52].map((w, i) => (
+        <rect key={`a${i}`} x="62" y={12 + i * 12} width={w} height="9" className="t-c" />
+      ))}
+    </S>
+  );
+}
+function Parallel() {
+  return (
+    <S>
+      {[20, 45, 70, 95].map((x) => (
+        <line key={x} x1={x} y1="10" x2={x} y2="62" className="t-line" />
+      ))}
+      <path d="M20 22 L 45 40 L 70 18 L 95 34" fill="none" className="t-stroke-a" />
+      <path d="M20 48 L 45 28 L 70 50 L 95 42" fill="none" className="t-stroke-c" />
+    </S>
+  );
+}
+function StyleBox() {
+  return (
+    <S>
+      {[0, 1, 2].map((r) =>
+        [0, 1, 2].map((c) => (
+          <rect key={`${r}${c}`} x={22 + c * 28} y={8 + r * 20} width="24" height="16" className="t-line" fill="none" />
+        ))
+      )}
+      <circle cx="62" cy="16" r="7" className="t-a" />
+      <circle cx="90" cy="36" r="5" className="t-b" />
+    </S>
+  );
+}
+function Icicle() {
+  return (
+    <S>
+      <rect x="8" y="10" width="28" height="52" className="t-a" />
+      <rect x="38" y="10" width="36" height="24" className="t-b" />
+      <rect x="38" y="36" width="36" height="26" className="t-c" />
+      <rect x="76" y="10" width="36" height="16" className="t-a" />
+      <rect x="76" y="28" width="36" height="34" className="t-b" />
+    </S>
+  );
+}
+function Lorenz() {
+  return (
+    <S>
+      <line x1="16" y1="58" x2="104" y2="14" className="t-line" />
+      <path d="M16 58 C 40 56, 70 48, 104 14" fill="none" className="t-stroke-a" />
+    </S>
+  );
+}
+function PnlCal() {
+  return (
+    <S>
+      {Array.from({ length: 21 }, (_, i) => (
+        <rect key={i} x={12 + (i % 7) * 14} y={10 + Math.floor(i / 7) * 18} width="12" height="14" rx="2" className={i % 3 ? "t-a" : "t-c"} opacity={0.4 + (i % 5) * 0.1} />
+      ))}
+    </S>
+  );
+}
 
 const BY_ID = {
   grouped_bar: ClusteredCols,
@@ -826,6 +920,19 @@ const BY_ID = {
   factor_heatmap: Corr,
   forest: Forest,
   exposure_stack: Exposure,
+  qq_plot: Qq,
+  horizon: Horizon,
+  vol_surface: VolSurf,
+  order_book: OrderBook,
+  parallel_coords: Parallel,
+  alpha_beta: Scatter,
+  style_box: StyleBox,
+  icicle: Icicle,
+  lorenz: Lorenz,
+  candles_volume: Ohlc,
+  pnl_calendar: PnlCal,
+  liquidity_ladder: Lollipop,
+  mosaic: Mekko,
 };
 
 export default function ChartThumb({ type }) {

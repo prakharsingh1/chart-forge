@@ -77,7 +77,23 @@ ridgeline / violin_returns: {"groups":[{"label":"2019","values":[-0.4,0.2,0.8]},
 corr_matrix / factor_heatmap: {"rows":["Eq","Cr","FX"],"values":[[1,0.4,0.1],[0.4,1,0.2],[0.1,0.2,1]]}
 yield_curve: {"tenors":["2Y","5Y","10Y","30Y"],"series":[{"name":"Spot","values":[4.2,4.0,4.25,4.55]}]}
 forest: {"items":[{"label":"Mkt","value":0.92,"low":0.81,"high":1.04}]}
-exposure_stack: {"xLabels":["Jan","Feb"],"series":[{"name":"Long","values":[80,90]},{"name":"Short","values":[-40,-50]}]}`;
+exposure_stack: {"xLabels":["Jan","Feb"],"series":[{"name":"Long","values":[80,90]},{"name":"Short","values":[-40,-50]}]}
+qq_plot: {"sample":[-1.2,-0.4,0.1,0.6,1.1,1.8]}
+horizon: {"xLabels":["W1","W2","W3","W4"],"values":[0.4,-0.8,1.2,-1.6],"bands":4}
+vol_surface: {"rows":["1M","3M","1Y"],"cols":["90","100","110"],"values":[[18,16,22],[20,17,24],[22,19,26]]}
+order_book: {"bids":[{"price":101.2,"size":40}],"asks":[{"price":101.4,"size":36}]}
+parallel_coords: {"axes":["Vol","Beta","PE"],"rows":[{"label":"A","Vol":22,"Beta":1.1,"PE":28}]}
+alpha_beta: {"points":[{"label":"A","x":1.2,"y":0.8,"size":40}]}
+style_box: {"points":[{"label":"Fund","xLabel":"Growth","yLabel":"Large","size":80}]}
+icicle / sunburst: {"items":[{"label":"Long","value":60,"children":[{"label":"Tech","value":40}]},{"label":"Short","value":40}]}
+lorenz: {"items":[{"label":"Top","value":40},{"label":"Rest","value":12}]}
+candles_volume: {"items":[{"label":"M","o":102,"h":108,"l":101,"c":106,"volume":12}]}
+pnl_calendar: {"days":[{"label":"1","value":0.4},{"label":"2","value":-0.8}]}
+liquidity_ladder: {"items":[{"label":"ON","value":40},{"label":"1W","value":22}]}
+mosaic: {"categories":[{"label":"NA","width":45,"segments":[{"name":"A","value":60},{"name":"B","value":40}]}]}
+hexbin: {"points":[{"x":1,"y":2},{"x":1.2,"y":2.1},{"x":0.8,"y":1.7}]}
+chord: {"labels":["Eq","Cr","FX"],"matrix":[[0,12,4],[12,0,6],[4,6,0]]}
+streamgraph: {"xLabels":["A","B","C"],"series":[{"name":"X","values":[10,12,9]},{"name":"Y","values":[8,6,11]}]}`;
 
 export async function extractInsights(apiKey, fc, brief = "") {
   const prompt = `${DESIGN_RULES}
@@ -234,6 +250,25 @@ export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
   return charts[0];
 }
 
+function hydrateSuggestion(s, i, prefix = "sug") {
+  let data = s.data;
+  if (typeof data === "string") {
+    try {
+      data = parseJsonLoose(data);
+    } catch {
+      data = {};
+    }
+  }
+  const chartType = s.chartType || s.type || "grouped_bar";
+  return {
+    ...s,
+    id: s.id || `${prefix}_${i}_${Date.now().toString(36)}`,
+    chartType,
+    origin: s.origin === "web" ? "web" : "deck",
+    data: normalizeChartData(chartType, data || {}),
+  };
+}
+
 export async function suggestFromDeck(apiKey, { corpus, industryHint, fileName }) {
   const prompt = `${DESIGN_RULES}
 
@@ -272,10 +307,10 @@ Return ONLY JSON:
   ]
 }
 
-Produce 8–10 suggestions:
-- At least 4 origin=deck using TABLE/CHART numbers (bridges, mix, ranked bars, combo)
-- At least 3 origin=web (industry context — labeled as web)
-Match the pack: ops/cost/CPG → waterfall, grouped_bar, stacked_bar, pie_donut, treemap, line_trend. Markets/risk → fan_chart, brinson, corr_matrix, ridgeline, yield_curve, ohlc.
+Produce 6–8 suggestions for the first screen (user can load more):
+- Prefer COMPLEX exhibits when numbers exist: waterfall, marimekko, treemap, icicle, corr_matrix, ridgeline, fan_chart, brinson, vol_surface, parallel_coords, qq_plot, order_book, horizon, mosaic, candles_volume.
+- At least 3 origin=deck from TABLE/CHART blocks
+- At least 2 origin=web
 Every suggestion MUST include a complete "data" object in the shape above so the preview can draw.
 Numbers must reconcile.`;
 
@@ -286,23 +321,37 @@ Numbers must reconcile.`;
     industry_why: parsed.industry_why || "",
     executive_summary: parsed.executive_summary || "",
     key_metrics: parsed.key_metrics || [],
-    suggestions: suggestions.map((s, i) => {
-      let data = s.data;
-      if (typeof data === "string") {
-        try {
-          data = parseJsonLoose(data);
-        } catch {
-          data = {};
-        }
-      }
-      const chartType = s.chartType || s.type || "grouped_bar";
-      return {
-        ...s,
-        id: s.id || `sug_${i}`,
-        chartType,
-        origin: s.origin === "web" ? "web" : "deck",
-        data: normalizeChartData(chartType, data || {}),
-      };
-    }),
+    suggestions: suggestions.map((s, i) => hydrateSuggestion(s, i, "sug")),
   };
+}
+
+export async function suggestMoreFromDeck(apiKey, { corpus, industryHint, fileName, existing = [] }) {
+  const used = existing.map((s) => s.chartType).filter(Boolean);
+  const titles = existing.map((s) => s.title).filter(Boolean).slice(0, 12);
+  const prompt = `${DESIGN_RULES}
+
+The user clicked Load more. They already have these chartTypes: ${used.join(", ") || "(none)"}
+Titles already shown: ${JSON.stringify(titles)}
+
+FILE: ${fileName || "deck.pptx"}
+INDUSTRY: ${industryHint || ""}
+
+DECK TEXT:
+${(corpus || "").slice(0, 14000)}
+
+Produce 6 NEW, MORE COMPLEX exhibits they do not already have. Prefer unused types from:
+qq_plot, horizon, vol_surface, order_book, parallel_coords, alpha_beta, style_box, icicle, sunburst, streamgraph, hexbin, chord, violin_returns, lorenz, candles_volume, pnl_calendar, liquidity_ladder, mosaic, fan_chart, corr_matrix, brinson, ridgeline, marimekko, treemap, forest.
+
+Do not repeat a chartType already listed. Use TABLE/CHART numbers from the deck when possible (origin=deck). You may add 2 origin=web industry exhibits.
+
+${DATA_SHAPES}
+
+Return ONLY JSON: { "suggestions": [ { "origin":"deck|web", "why":"", "id":"m1", "chartType":"", "title":"", "subtitle":"", "insight":"", "source":"", "unit":"", "data":{} } ] }
+Every item needs a complete data object.`;
+
+  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.18, { search: true }));
+  const suggestions = (parsed.suggestions || parsed.charts || [])
+    .filter((s) => !used.includes(s.chartType || s.type))
+    .map((s, i) => hydrateSuggestion(s, i, "more"));
+  return { suggestions };
 }

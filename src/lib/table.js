@@ -148,6 +148,31 @@ export function chartToTable(chart) {
   if (shape === "forest") {
     return { columns: ["Factor", "Estimate", "Low", "High"], rows: (d.items || []).map((it) => [it.label, it.value, it.low, it.high]) };
   }
+  if (shape === "qq") {
+    return { columns: ["Sample"], rows: (d.sample || d.values || []).map((v) => [v]) };
+  }
+  if (shape === "horizon") {
+    const labs = d.xLabels || [];
+    const vals = d.values || [];
+    return { columns: ["Period", "Value"], rows: labs.map((lab, i) => [lab, vals[i] ?? ""]) };
+  }
+  if (shape === "order_book") {
+    const n = Math.max((d.bids || []).length, (d.asks || []).length);
+    return {
+      columns: ["Bid px", "Bid sz", "Ask px", "Ask sz"],
+      rows: Array.from({ length: n }, (_, i) => [d.bids?.[i]?.price ?? "", d.bids?.[i]?.size ?? "", d.asks?.[i]?.price ?? "", d.asks?.[i]?.size ?? ""]),
+    };
+  }
+  if (shape === "parallel") {
+    const axes = d.axes || [];
+    return { columns: ["Name", ...axes], rows: (d.rows || []).map((r) => [r.label || "", ...axes.map((ax) => r[ax] ?? "")]) };
+  }
+  if (shape === "style_box") {
+    return { columns: ["Label", "Value/Growth", "Size bucket", "Weight"], rows: (d.points || []).map((p) => [p.label, p.xLabel, p.yLabel, p.size]) };
+  }
+  if (shape === "calendar_days") {
+    return { columns: ["Day", "P&L"], rows: (d.days || d.items || []).map((it) => [it.label, it.value]) };
+  }
   return { columns: ["Key", "Value"], rows: Object.entries(d).map(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : v]) };
 }
 
@@ -257,6 +282,22 @@ export function tableToChartData(chart, columns, rows) {
     next.series = columns.slice(1).map((name, i) => ({ name, values: rows.map((r) => num(r[i + 1])) }));
   } else if (shape === "forest") {
     next.items = rows.map((r) => ({ label: String(r[0] ?? ""), value: num(r[1]), low: num(r[2]), high: num(r[3]) }));
+  } else if (shape === "qq") {
+    next.sample = rows.map((r) => num(r[0]));
+  } else if (shape === "horizon") {
+    next.xLabels = rows.map((r) => String(r[0] ?? ""));
+    next.values = rows.map((r) => num(r[1]));
+  } else if (shape === "order_book") {
+    next.bids = rows.filter((r) => r[0] !== "").map((r) => ({ price: num(r[0]), size: num(r[1]) }));
+    next.asks = rows.filter((r) => r[2] !== "").map((r) => ({ price: num(r[2]), size: num(r[3]) }));
+  } else if (shape === "parallel") {
+    const axes = columns.slice(1);
+    next.axes = axes;
+    next.rows = rows.map((r) => ({ label: String(r[0] ?? ""), ...Object.fromEntries(axes.map((ax, i) => [ax, num(r[i + 1])])) }));
+  } else if (shape === "style_box") {
+    next.points = rows.map((r) => ({ label: String(r[0] ?? ""), xLabel: String(r[1] ?? ""), yLabel: String(r[2] ?? ""), size: num(r[3]) || 40 }));
+  } else if (shape === "calendar_days") {
+    next.days = rows.map((r) => ({ label: String(r[0] ?? ""), value: num(r[1]) }));
   }
   return next;
 }
