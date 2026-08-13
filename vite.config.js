@@ -3,8 +3,9 @@ import react from "@vitejs/plugin-react";
 
 function configPlugin(env) {
   const body = `window.__CF_CONFIG__=${JSON.stringify({
-    supabaseUrl: env.VITE_SUPABASE_URL || "",
-    supabaseAnonKey: env.VITE_SUPABASE_ANON_KEY || "",
+    supabaseUrl: env.VITE_SUPABASE_URL || "https://wrlxmrzjdxkpdbcutgxv.supabase.co",
+    supabaseAnonKey:
+      env.VITE_SUPABASE_ANON_KEY || "sb_publishable_TetqLJfk9KeZwolwc6J-Zw_BaSUNSRg",
   })};`;
   return {
     name: "chartforge-config",
