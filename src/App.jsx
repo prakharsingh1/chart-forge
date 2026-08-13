@@ -372,7 +372,12 @@ export default function App() {
         setSaveState("Saved");
         refreshDecks();
       } catch (e) {
-        setSaveState(e.message || "Save failed");
+        const msg = e.message || "Save failed";
+        setSaveState(
+          /PGRST205|schema cache|does not exist/i.test(msg)
+            ? "Run supabase/schema.sql in the Supabase SQL editor"
+            : msg
+        );
       }
     }, 1200);
     return () => clearTimeout(t);
