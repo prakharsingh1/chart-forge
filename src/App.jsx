@@ -83,6 +83,7 @@ export default function App() {
   const [suggestPack, setSuggestPack] = useState(null);
   const [moreLoading, setMoreLoading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [studioMore, setStudioMore] = useState(false);
   const [libQuery, setLibQuery] = useState("");
   const [libCat, setLibCat] = useState("All");
   const [brief, setBrief] = useState("");
@@ -515,60 +516,73 @@ export default function App() {
     <div className="app">
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <header className="topbar">
-        <div className="brand" onClick={reset}>
+        <div className="brand" onClick={() => setView("home")}>
           <div className="mark">C</div>
           <h1>ChartForge</h1>
-          <span className="tag">{CHART_TYPES.length} charts</span>
         </div>
+        {(view === "suggest" || view === "studio") && (
+          <ol className="step-bar" aria-label="Workflow">
+            <li className="done">1 Upload</li>
+            <li className={view === "suggest" ? "current" : "done"}>2 Pick charts</li>
+            <li className={view === "studio" ? "current" : ""}>3 Edit & export</li>
+          </ol>
+        )}
         <div className="top-actions">
           {view === "home" && (
             <>
               <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("solution")?.scrollIntoView({ behavior: "smooth" })}>
-                Product
-              </button>
-              <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("use-cases")?.scrollIntoView({ behavior: "smooth" })}>
-                Use cases
+                How it works
               </button>
               <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>
                 Pricing
               </button>
             </>
           )}
-          <button className="btn btn-sm btn-primary" onClick={() => setLibraryOpen(true)}>
-            Chart library
-          </button>
           <input ref={pptxRef} type="file" accept=".pptx,.pptm" hidden onChange={(e) => e.target.files[0] && handlePptx(e.target.files[0])} />
-          <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
-            Drop PPTX
-          </button>
-          {deck && (
-            <button className="btn btn-sm btn-primary" onClick={exportPpt} disabled={loading}>
-              Download PPTX (native)
+          {view === "home" && (
+            <button className="btn btn-sm btn-primary" onClick={() => pptxRef.current?.click()}>
+              Upload PPTX
+            </button>
+          )}
+          {view === "suggest" && (
+            <>
+              <button className="btn btn-sm btn-ghost" onClick={() => setView("home")}>
+                ← Home
+              </button>
+              <button className="btn btn-sm btn-primary" onClick={addAllSuggestions} disabled={!suggestPack?.suggestions?.length}>
+                Continue to editor
+              </button>
+            </>
+          )}
+          {view === "studio" && (
+            <>
+              <button className="btn btn-sm btn-ghost" onClick={() => setView(suggestPack?.suggestions?.length ? "suggest" : "home")}>
+                ← Charts
+              </button>
+              {deck && (
+                <button className="btn btn-sm btn-primary" onClick={exportPpt} disabled={loading}>
+                  {loading ? "Building…" : "Download PPTX"}
+                </button>
+              )}
+              <button className="btn btn-sm btn-ghost" onClick={reset}>
+                New
+              </button>
+            </>
+          )}
+          {view === "login" && (
+            <button className="btn btn-sm btn-ghost" onClick={() => setView("home")}>
+              ← Home
             </button>
           )}
           {user ? (
-            <>
-              <span className="mono">{user.email}</span>
-              {saveState && <span className="mono">{saveState}</span>}
-              <button className="btn btn-sm btn-ghost" onClick={() => signOut()}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-sm btn-primary" onClick={() => setView("login")}>
+            <button className="btn btn-sm btn-ghost" onClick={() => signOut()} title={user.email}>
+              {user.email?.split("@")[0] || "Account"}
+            </button>
+          ) : view !== "login" ? (
+            <button className="btn btn-sm btn-ghost" onClick={() => setView("login")}>
               Log in
             </button>
-          )}
-          {keySet && (
-            <button className="btn btn-sm btn-ghost" onClick={clearKey}>
-              Change key
-            </button>
-          )}
-          {view !== "home" && (
-            <button className="btn btn-sm" onClick={reset}>
-              New deck
-            </button>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -645,68 +659,7 @@ export default function App() {
       {view === "studio" && (
         <div className={`studio ${deck ? "deck-mode" : ""}`}>
           <aside className="rail">
-            {!keySet && (
-              <>
-                <h4>Gemini API key</h4>
-                <div className="key-row">
-                  <input
-                    className="field"
-                    type="password"
-                    placeholder="AIza…"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && apiKey.trim() && saveKey()}
-                  />
-                  <button className="btn btn-primary" onClick={saveKey} disabled={!apiKey.trim()}>
-                    Save
-                  </button>
-                </div>
-                <p className="muted" style={{ marginTop: 8 }}>
-                  Blank charts and the gallery work offline. AI fill needs{" "}
-                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-                    Gemini
-                  </a>
-                  .
-                </p>
-              </>
-            )}
-
-            <h4>Cloud decks</h4>
-            {!user && (
-              <p className="muted">
-                <button className="linkish" type="button" onClick={() => setAuthOpen(true)}>
-                  Log in
-                </button>{" "}
-                to save decks to Supabase.
-              </p>
-            )}
-            {user && (
-              <div className="filmstrip">
-                {savedDecks.map((d) => (
-                  <button key={d.id} className={`thumb ${deck?.remoteId === d.id ? "on" : ""}`} onClick={() => openRemote(d.id)}>
-                    <span>•</span>
-                    <em>{d.name}</em>
-                    <small>{new Date(d.updated_at).toLocaleDateString()}</small>
-                  </button>
-                ))}
-                {!savedDecks.length && <p className="muted">No saved decks yet — they appear after you edit.</p>}
-              </div>
-            )}
-            {user && deck?.remoteId && (
-              <button
-                className="btn btn-sm btn-ghost"
-                style={{ marginTop: 8 }}
-                onClick={async () => {
-                  await deleteDeck(deck.remoteId);
-                  setDeck(null);
-                  refreshDecks();
-                }}
-              >
-                Delete cloud copy
-              </button>
-            )}
-
-            <h4>This session</h4>
+            <h4>This deck</h4>
             <p className="muted">{deck?.name || "Untitled"} · {slides.length} slides</p>
             <div className="filmstrip">
               {slides.map((s, i) => (
@@ -717,49 +670,11 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button className="btn btn-sm" onClick={addSlide}>
-                + Slide
-              </button>
-              <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
-                Open PPTX
-              </button>
-            </div>
+            <button className="btn btn-sm" style={{ marginTop: 8 }} onClick={addSlide}>
+              + Slide
+            </button>
 
-            <h4>Brief / direction</h4>
-            <textarea
-              className="field"
-              value={brief}
-              onChange={(e) => setBrief(e.target.value)}
-              placeholder="Brief the desk: NAV fan P10/P50/P90, underwater from 2019, Brinson by sector…"
-            />
-
-            <h4>Data file</h4>
-            <div
-              className={`drop ${dragOver ? "over" : ""}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-              }}
-              onClick={() => fileRef.current?.click()}
-            >
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pptx,.pptm,.csv,.tsv,.xlsx,.xls,.pdf,.txt,.md"
-                hidden
-                onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
-              />
-              {file ? file.name : "Drop PPTX, Excel, CSV, or PDF"}
-            </div>
-
-            <h4>Firm palette</h4>
+            <h4>Look</h4>
             <div className="palettes">
               {Object.entries(palettes).map(([key, p]) => (
                 <button key={key} className={`pal ${palette === key ? "on" : ""}`} onClick={() => setPalette(key)}>
@@ -773,35 +688,144 @@ export default function App() {
               ))}
             </div>
 
-            <h4>Direction</h4>
-            <input
-              className="field"
-              value={customInstr}
-              onChange={(e) => setCustomInstr(e.target.value)}
-              placeholder="Force a Mekko; highlight top 5…"
-            />
             <button className="btn btn-primary" style={{ width: "100%", marginTop: 16, justifyContent: "center" }} onClick={generate} disabled={loading}>
               {loading ? (
                 <>
                   <span className="spin" /> {loadMsg || "Working…"}
                 </>
               ) : deck?.slides?.length ? (
-                "AI-fill this deck"
+                "Regenerate this deck"
               ) : (
                 "Generate charts"
               )}
             </button>
             {error && <div className="error">{error}</div>}
+
+            <button className="more-toggle" type="button" onClick={() => setStudioMore((v) => !v)}>
+              {studioMore ? "Hide extras ▲" : "More options ▾"}
+            </button>
+            {studioMore && (
+              <>
+                {!keySet && (
+                  <>
+                    <h4>Gemini API key</h4>
+                    <div className="key-row">
+                      <input
+                        className="field"
+                        type="password"
+                        placeholder="AIza…"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && apiKey.trim() && saveKey()}
+                      />
+                      <button className="btn btn-primary" onClick={saveKey} disabled={!apiKey.trim()}>
+                        Save
+                      </button>
+                    </div>
+                    <p className="muted" style={{ marginTop: 8 }}>
+                      AI fill needs a{" "}
+                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+                        Gemini
+                      </a>{" "}
+                      key. Charts still edit offline.
+                    </p>
+                  </>
+                )}
+                {keySet && (
+                  <p className="muted">
+                    Gemini key saved.{" "}
+                    <button className="linkish" type="button" onClick={clearKey}>
+                      Change
+                    </button>
+                  </p>
+                )}
+
+                <h4>Cloud</h4>
+                {!user && (
+                  <p className="muted">
+                    <button className="linkish" type="button" onClick={() => setAuthOpen(true)}>
+                      Log in
+                    </button>{" "}
+                    to save decks.
+                  </p>
+                )}
+                {user && (
+                  <div className="filmstrip">
+                    {savedDecks.map((d) => (
+                      <button key={d.id} className={`thumb ${deck?.remoteId === d.id ? "on" : ""}`} onClick={() => openRemote(d.id)}>
+                        <span>•</span>
+                        <em>{d.name}</em>
+                        <small>{new Date(d.updated_at).toLocaleDateString()}</small>
+                      </button>
+                    ))}
+                    {!savedDecks.length && <p className="muted">No saved decks yet.</p>}
+                  </div>
+                )}
+                {user && deck?.remoteId && (
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    style={{ marginTop: 8 }}
+                    onClick={async () => {
+                      await deleteDeck(deck.remoteId);
+                      setDeck(null);
+                      refreshDecks();
+                    }}
+                  >
+                    Delete cloud copy
+                  </button>
+                )}
+
+                <h4>Brief</h4>
+                <textarea
+                  className="field"
+                  value={brief}
+                  onChange={(e) => setBrief(e.target.value)}
+                  placeholder="Optional: NAV fan P10/P50/P90, Brinson by sector…"
+                />
+
+                <h4>Replace data</h4>
+                <div
+                  className={`drop ${dragOver ? "over" : ""}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+                  }}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".pptx,.pptm,.csv,.tsv,.xlsx,.xls,.pdf,.txt,.md"
+                    hidden
+                    onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+                  />
+                  {file ? file.name : "CSV, Excel, or PDF"}
+                </div>
+
+                <h4>Direction</h4>
+                <input
+                  className="field"
+                  value={customInstr}
+                  onChange={(e) => setCustomInstr(e.target.value)}
+                  placeholder="Force a Mekko; highlight top 5…"
+                />
+              </>
+            )}
           </aside>
 
           <main className="stage" ref={stageRef}>
             {!slides.length && !loading && (
               <div className="stage-head">
                 <div>
-                  <h2>Blank canvas</h2>
-                  <p>Open the library for fans, Brinson, and matrices — or drop an IC pack. Values stay editable.</p>
+                  <h2>Editor</h2>
+                  <p>Pick a chart type on the right, or go back and choose from the suggestions.</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setLibraryOpen(true)}>Chart library</button>
               </div>
             )}
 
@@ -810,20 +834,6 @@ export default function App() {
                 <div>
                   <h2>{insights.title}</h2>
                   <p>{insights.executive_summary}</p>
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button className="btn btn-sm" onClick={exportOnePng}>
-                    PNG snapshot
-                  </button>
-                  <button className="btn btn-sm" onClick={exportOneSvg}>
-                    SVG
-                  </button>
-                  <button className="btn btn-sm" onClick={() => exportExcel(charts, fileContent?.data)}>
-                    Excel
-                  </button>
-                  <button className="btn btn-sm btn-primary" onClick={exportPpt}>
-                    PPTX · native objects
-                  </button>
                 </div>
               </div>
             )}
@@ -849,14 +859,10 @@ export default function App() {
               <>
                 <div className="chips" style={{ marginBottom: 10 }}>
                   <button className="btn btn-sm" onClick={exportOnePng}>PNG</button>
-                  <button className="btn btn-sm" onClick={async () => active.chart && exportSuggestionPptx(active.chart)}>
-                    This slide · PPTX
-                  </button>
+                  <button className="btn btn-sm" onClick={exportOneSvg}>SVG</button>
+                  <button className="btn btn-sm" onClick={() => exportExcel(charts, fileContent?.data)}>Excel</button>
                 </div>
-                <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setLibraryOpen(true)}>
-                  {CHART_TYPES.length} chart types
-                </button>
-                <label className="muted" style={{ marginTop: 12 }}>Or jump to</label>
+                <label className="muted">Chart type</label>
                 <select
                   className="field"
                   value={active.chart?.chartType || ""}
@@ -873,13 +879,9 @@ export default function App() {
                     </option>
                   ))}
                 </select>
-                <div className="chips" style={{ marginTop: 8 }}>
-                  {["waterfall", "sankey", "treemap", "marimekko", "heatmap", "combo", "gantt"].map((id) => (
-                    <button key={id} className="chip" onClick={() => insertChart(id)}>
-                      {chartMeta(id).name}
-                    </button>
-                  ))}
-                </div>
+                <button className="btn btn-sm btn-ghost" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={() => setLibraryOpen(true)}>
+                  Browse chart library
+                </button>
                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                   <button className="btn btn-sm" onClick={fillActive} disabled={loading}>
                     AI fill this slide
@@ -919,7 +921,7 @@ export default function App() {
         <div className="modal-bg" onClick={() => setLibraryOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{CHART_TYPES.length} charts for B2B stories</h3>
+              <h3>Chart library</h3>
               <button className="btn btn-sm" onClick={() => setLibraryOpen(false)}>Close</button>
             </div>
             <input className="field" value={libQuery} onChange={(e) => setLibQuery(e.target.value)} placeholder="Search Sankey, waterfall, cohort…" />

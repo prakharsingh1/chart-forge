@@ -67,56 +67,42 @@ export default function SuggestView({
   return (
     <div className="suggest">
       <section className="suggest-hero">
-        <div className="eyebrow">Ready to paste · fonts & colors from your deck</div>
+        <div className="eyebrow">Step 2 of 3</div>
         <h2>
-          {pack?.industry ? `${pack.industry}. ` : ""}
-          {suggestions.length ? `${suggestions.length} exhibits, prefilled.` : loading ? "Reading the deck…" : "Drop-in charts from this PowerPoint."}
+          {suggestions.length
+            ? `Pick the charts to keep (${suggestions.length})`
+            : loading
+              ? "Reading your deck…"
+              : "Charts from this PowerPoint"}
         </h2>
         <p>
-          {pack?.executive_summary ||
-            pack?.industry_why ||
-            "We pull numbers from your slides, match the theme, and add industry-depth exhibits so nobody has to type a data sheet."}
+          Click a card to open it in the editor, or send the whole set. You can still change types and numbers on the next screen.
         </p>
         <div className="hero-cta">
           <button className="btn btn-primary" onClick={onAddAll} disabled={!suggestions.length}>
-            Open all in studio
+            Continue to editor
           </button>
-          <button className="btn" onClick={onOpenStudio}>
-            Edit original slides
+          <button className="btn btn-ghost" onClick={onOpenStudio}>
+            Skip — original slides
           </button>
           {keySet && (
             <button className="btn btn-ghost" onClick={onRetry} disabled={loading}>
               Re-run AI
             </button>
           )}
-          {keySet && (
-            <button className="btn btn-primary" onClick={onLoadMore} disabled={moreLoading || loading}>
-              {moreLoading ? "Loading more…" : "Load more complex charts"}
-            </button>
-          )}
         </div>
-        {pack?.key_metrics?.length > 0 && (
-          <div className="metrics" style={{ justifyContent: "center" }}>
-            {pack.key_metrics.map((m) => (
-              <div className="metric" key={m.name}>
-                <div className="k">{m.name}</div>
-                <div className="v">{m.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       {!keySet && (
         <div className="key-banner">
           <div>
-            <strong>Add a Gemini key</strong>
-            <p className="muted">Needed to prefill from the PPTX and pull industry stats from the web. Gallery still works offline.</p>
+            <strong>Gemini key needed for AI charts</strong>
+            <p className="muted">Paste a key once. It stays in this browser.</p>
           </div>
           <div className="key-row">
             <input className="field" type="password" placeholder="AIza…" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
             <button className="btn btn-primary" onClick={onSaveKey} disabled={!apiKey.trim()}>
-              Save
+              Save & generate
             </button>
           </div>
         </div>
@@ -133,25 +119,23 @@ export default function SuggestView({
         {suggestions.map((s) => {
           const meta = chartMeta(s.chartType);
           return (
-            <article key={s.id} className="suggest-card">
+            <article key={s.id} className="suggest-card" onClick={() => onOpenChart(s)}>
               <div className="suggest-card-viz">
                 {s.data ? <MiniChart chart={s} pal={pal} /> : <ChartThumb type={meta} />}
+                <span className="suggest-open-hint">Open in editor</span>
               </div>
               <div className="suggest-card-body">
                 <div className="suggest-badges">
-                  <span className={`origin ${s.origin}`}>{s.origin === "web" ? "Industry · web" : "From your PPTX"}</span>
+                  <span className={`origin ${s.origin}`}>{s.origin === "web" ? "Industry" : "From pack"}</span>
                   <span className="cat">{meta.name}</span>
                 </div>
                 <h3>{s.title}</h3>
                 <p>{s.subtitle || s.why}</p>
-                <div className="suggest-actions">
-                  <button className="btn btn-sm btn-primary" onClick={() => onOpenChart(s)}>
-                    Open
-                  </button>
-                  <button className="btn btn-sm" onClick={() => onPptxOne(s)}>
+                <div className="suggest-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="btn btn-sm btn-ghost" onClick={() => onPptxOne(s)}>
                     PPTX
                   </button>
-                  <button className="btn btn-sm" onClick={() => onPng(s)}>
+                  <button className="btn btn-sm btn-ghost" onClick={() => onPng(s)}>
                     PNG
                   </button>
                 </div>
@@ -163,27 +147,23 @@ export default function SuggestView({
 
       {keySet && (
         <div className="suggest-more">
-          <button className="btn btn-primary" onClick={onLoadMore} disabled={moreLoading || loading}>
+          <button className="btn" onClick={onLoadMore} disabled={moreLoading || loading}>
             {moreLoading ? (
               <>
-                <span className="spin" /> Designing more complex exhibits…
+                <span className="spin" /> Designing more…
               </>
             ) : (
-              "Load more complex charts"
+              "Load more charts"
             )}
           </button>
-          <p className="muted">
-            QQ plots, vol surfaces, order books, parallel coordinates, icicles, Lorenz curves, P&L calendars — another batch from this deck.
-          </p>
         </div>
       )}
 
       {!!deck?.slides?.length && (
-        <section className="suggest-slides">
-          <h3>Slides we read</h3>
-          <p className="muted" style={{ margin: "0 0 12px" }}>
-            Titles from the title placeholder, not leftover text runs. Tables and native charts are sent to the model.
-          </p>
+        <details className="suggest-slides">
+          <summary>
+            Read {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"} from the file
+          </summary>
           <div className="suggest-slide-row">
             {deck.slides.slice(0, 18).map((s, i) => (
               <button key={s.id} className="slide-chip" onClick={onOpenStudio}>
@@ -192,7 +172,7 @@ export default function SuggestView({
               </button>
             ))}
           </div>
-        </section>
+        </details>
       )}
     </div>
   );

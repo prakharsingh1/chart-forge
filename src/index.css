@@ -22,11 +22,12 @@ a { color: inherit; }
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 
 .topbar {
-  height: 64px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  gap: 12px;
+  padding: 10px 22px;
   background: rgba(7,7,12,.8);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
@@ -47,7 +48,41 @@ a { color: inherit; }
   font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   background: rgba(200,245,66,.12); color: var(--accent); padding: 4px 8px; border-radius: 999px; font-weight: 700;
 }
-.top-actions { display: flex; gap: 8px; align-items: center; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.step-bar {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+.step-bar li {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.step-bar li.done { color: var(--ink); }
+.step-bar li.current {
+  color: #111;
+  background: var(--accent);
+}
+.more-toggle {
+  width: 100%;
+  margin-top: 18px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  padding: 12px 0 4px;
+}
+.more-toggle:hover { color: var(--ink); }
 
 .btn {
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
@@ -295,9 +330,16 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 }
 .suggest-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; cursor: pointer; text-align: left;
 }
+.suggest-card:hover { border-color: var(--accent); }
 .suggest-card-viz { height: 220px; background: #fff; position: relative; overflow: hidden; }
+.suggest-open-hint {
+  position: absolute; left: 12px; bottom: 12px;
+  background: #111; color: #fff; font-size: 11px; font-weight: 700;
+  padding: 5px 10px; border-radius: 999px; opacity: 0; transition: opacity .15s;
+}
+.suggest-card:hover .suggest-open-hint { opacity: 1; }
 .suggest-mini-wrap { width: 100%; height: 100%; position: relative; }
 .suggest-mini { width: 100%; height: 100%; }
 .suggest-mini-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff; }
@@ -316,20 +358,16 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 .suggest-more {
   text-align: center;
   margin: 28px 0 8px;
-  padding: 22px;
-  border: 1px dashed rgba(200,245,66,.45);
-  border-radius: 20px;
-  background: rgba(200,245,66,.06);
 }
-.suggest-more .btn { min-width: 280px; justify-content: center; }
-.suggest-more p { margin: 10px auto 0; max-width: 560px; }
+.suggest-more .btn { min-width: 200px; justify-content: center; }
 .key-banner {
   display: flex; justify-content: space-between; gap: 16px; align-items: center;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
   padding: 16px; margin-bottom: 22px; flex-wrap: wrap;
 }
 .key-banner p { margin: 4px 0 0; }
-.suggest-slides { margin-top: 36px; }
+.suggest-slides { margin-top: 36px; color: var(--muted); font-size: 13px; }
+.suggest-slides summary { cursor: pointer; font-weight: 700; margin-bottom: 12px; color: var(--ink); }
 .suggest-slide-row { display: flex; gap: 8px; overflow: auto; padding-bottom: 8px; }
 .slide-chip {
   min-width: 160px; text-align: left; border: 1px solid var(--line); background: var(--panel);
@@ -420,6 +458,9 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 @media (max-width: 1100px) {
   .framework, .price-grid, .use-grid, .auth-page { grid-template-columns: 1fr; }
   .auth-side { border-right: none; border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 900px) {
+  .step-bar { display: none; }
 }
 @media (max-width: 640px) {
   .paths, .gallery-grid, .lib-grid, .framework, .price-grid, .use-grid { grid-template-columns: 1fr; }

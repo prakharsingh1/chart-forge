@@ -1,20 +1,7 @@
 import { CHART_TYPES } from "../theme.js";
 import ChartThumb from "./ChartThumb.jsx";
 
-const FEATURED_IDS = [
-  "fan_chart",
-  "vol_surface",
-  "order_book",
-  "qq_plot",
-  "parallel_coords",
-  "brinson",
-  "corr_matrix",
-  "horizon",
-  "icicle",
-  "pnl_calendar",
-  "candles_volume",
-  "waterfall",
-];
+const FEATURED_IDS = ["fan_chart", "brinson", "corr_matrix", "vol_surface", "horizon", "waterfall"];
 
 const USE_CASES = [
   {
@@ -40,9 +27,9 @@ const USE_CASES = [
 ];
 
 const STEPS = [
-  { n: "01", t: "Drop the pack", d: "IC memo, risk committee, or research PPTX. We read numbers, fonts, and colors." },
-  { n: "02", t: "We draw the hard exhibit", d: "Fan charts, attribution, matrices, ridgelines — designed, filled, labeled. Not a template you retype." },
-  { n: "03", t: "Paste into the book", d: "Native Office charts or PNG. Edit the sheet in studio the way you would in a real desk tool." },
+  { n: "01", t: "Upload the pack", d: "Drop an IC, risk, or research PPTX. We read numbers, fonts, and colors." },
+  { n: "02", t: "Pick the charts", d: "We draft fans, attribution, matrices, and more. Click what you want to keep." },
+  { n: "03", t: "Edit and export", d: "Change types and values, then download native PowerPoint — not a screenshot." },
 ];
 
 const COMPARE = [
@@ -97,12 +84,10 @@ export default function MarketingHome({
   return (
     <div className="mkt">
       <section className="hero" id="product">
-        <div className="eyebrow">Complex market charts for hedge funds, PMs, and research scientists</div>
-        <h2>The exhibits nobody on the desk can finish by Monday.</h2>
+        <div className="eyebrow">Hedge funds · PMs · research</div>
+        <h2>Hard charts from the deck you already have.</h2>
         <p>
-          Fan forecasts, underwater drawdowns, Brinson attribution, correlation matrices, yield curves, ridgeline
-          return distributions. ChartForge reads the pack you already have and draws the hard visualization — editable,
-          not a picture, in your fonts and colors.
+          Upload a PPTX. We draft fans, Brinson, matrices, and curves in your colors. You pick, edit, and export native PowerPoint.
         </p>
         <div
           className={`hero-drop ${dragOver ? "over" : ""}`}
@@ -119,26 +104,14 @@ export default function MarketingHome({
           }}
           onClick={onUpload}
         >
-          <div className="hero-drop-mark">PPTX</div>
-          <strong>Drop an IC, risk, or research deck</strong>
-          <span>We extract the series, theme, and story. You paste a chart a scientist would recognize.</span>
+          <div className="hero-drop-mark">1 · Upload</div>
+          <strong>Drop a PowerPoint</strong>
+          <span>Then pick charts, then download. Three steps.</span>
         </div>
         <div className="hero-cta">
-          <button className="btn btn-primary" onClick={onUpload}>
-            Upload PowerPoint
-          </button>
-          <button className="btn" onClick={onLogin}>
-            Log in to workspace
-          </button>
           <button className="btn btn-ghost" onClick={onLibrary}>
-            See {CHART_TYPES.length} chart types
+            Browse chart types
           </button>
-        </div>
-        <div className="trust-row">
-          <span>P10–P90 fans</span>
-          <span>Brinson & long/short</span>
-          <span>Corr / factor matrices</span>
-          <span>Native PPTX objects</span>
         </div>
       </section>
 
@@ -198,11 +171,8 @@ export default function MarketingHome({
       </section>
 
       <section className="lib-home" id="library">
-        <h3>The hard library first</h3>
-        <p className="mkt-lead">
-          {CHART_TYPES.length} types. Fans, drawdowns, attribution, matrices, and curves sit in front — then the
-          consulting bars you still need for the appendix.
-        </p>
+        <h3>A few of the hard types</h3>
+        <p className="mkt-lead">Fans, attribution, matrices, surfaces — then the bars you still need in the appendix.</p>
         <div className="lib-grid">
           {featured.map((t) => (
             <button key={t.id} className="type-card" onClick={onLibrary}>
