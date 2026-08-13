@@ -22,11 +22,12 @@ a { color: inherit; }
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 
 .topbar {
-  height: 64px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  gap: 12px;
+  padding: 10px 22px;
   background: rgba(7,7,12,.8);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
@@ -47,7 +48,41 @@ a { color: inherit; }
   font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   background: rgba(200,245,66,.12); color: var(--accent); padding: 4px 8px; border-radius: 999px; font-weight: 700;
 }
-.top-actions { display: flex; gap: 8px; align-items: center; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.step-bar {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+.step-bar li {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.step-bar li.done { color: var(--ink); }
+.step-bar li.current {
+  color: #111;
+  background: var(--accent);
+}
+.more-toggle {
+  width: 100%;
+  margin-top: 18px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  padding: 12px 0 4px;
+}
+.more-toggle:hover { color: var(--ink); }
 
 .btn {
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
@@ -277,6 +312,7 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 .chart-thumb .t-line { stroke: rgba(255,255,255,.22); fill: none; stroke-width: 1.5; }
 .chart-thumb .t-stroke-a { stroke: #6d5ef6; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .chart-thumb .t-stroke-b { stroke: #c8f542; fill: none; stroke-width: 2.5; stroke-linecap: round; }
+.chart-thumb .t-stroke-c { stroke: #f43f5e; fill: none; stroke-width: 2.5; stroke-linecap: round; }
 
 .type-card { min-height: 168px; }
 .type-card .chart-thumb { pointer-events: none; }
@@ -294,10 +330,21 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 }
 .suggest-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; cursor: pointer; text-align: left;
 }
-.suggest-card-viz { height: 220px; background: #fff; }
+.suggest-card:hover { border-color: var(--accent); }
+.suggest-card-viz { height: 220px; background: #fff; position: relative; overflow: hidden; }
+.suggest-open-hint {
+  position: absolute; left: 12px; bottom: 12px;
+  background: #111; color: #fff; font-size: 11px; font-weight: 700;
+  padding: 5px 10px; border-radius: 999px; opacity: 0; transition: opacity .15s;
+}
+.suggest-card:hover .suggest-open-hint { opacity: 1; }
+.suggest-mini-wrap { width: 100%; height: 100%; position: relative; }
 .suggest-mini { width: 100%; height: 100%; }
+.suggest-mini-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff; }
+.suggest-mini-fallback .chart-thumb { width: 100%; height: 100%; }
+.suggest-mini-fallback .thumb-svg { width: 100%; height: 100%; }
 .suggest-card-body { padding: 14px 16px 16px; }
 .suggest-card-body h3 { margin: 8px 0 6px; font-size: 16px; letter-spacing: -0.02em; }
 .suggest-card-body p { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.4; }
@@ -308,21 +355,26 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 }
 .origin.deck { background: rgba(200,245,66,.14); color: var(--accent); }
 .origin.web { background: rgba(109,94,246,.2); color: #c4b8ff; }
-.suggest-actions { display: flex; gap: 6px; }
+.suggest-more {
+  text-align: center;
+  margin: 28px 0 8px;
+}
+.suggest-more .btn { min-width: 200px; justify-content: center; }
 .key-banner {
   display: flex; justify-content: space-between; gap: 16px; align-items: center;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
   padding: 16px; margin-bottom: 22px; flex-wrap: wrap;
 }
 .key-banner p { margin: 4px 0 0; }
-.suggest-slides { margin-top: 36px; }
+.suggest-slides { margin-top: 36px; color: var(--muted); font-size: 13px; }
+.suggest-slides summary { cursor: pointer; font-weight: 700; margin-bottom: 12px; color: var(--ink); }
 .suggest-slide-row { display: flex; gap: 8px; overflow: auto; padding-bottom: 8px; }
 .slide-chip {
   min-width: 160px; text-align: left; border: 1px solid var(--line); background: var(--panel);
   border-radius: 12px; padding: 10px 12px; color: inherit; display: flex; gap: 8px;
 }
 .slide-chip span { color: var(--accent); font-weight: 800; font-size: 12px; }
-.slide-chip em { font-style: normal; font-size: 12px; }
+.slide-chip em { font-style: normal; font-size: 12px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 .app { background-image: radial-gradient(900px 400px at 10% -10%, rgba(109,94,246,.22), transparent), radial-gradient(700px 300px at 90% 0%, rgba(200,245,66,.08), transparent); }
 
@@ -403,9 +455,31 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 .auth-panel-head h3 { margin: 0 0 8px; font-size: 24px; }
 .auth-panel-head p { margin: 0 0 18px; }
 
+.onboard { padding: 36px 24px 80px; }
+.onboard-steps {
+  display: flex; gap: 8px; list-style: none; margin: 0 auto 28px; padding: 0; justify-content: center; flex-wrap: wrap;
+}
+.onboard-steps li {
+  font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 12px; border-radius: 999px;
+}
+.onboard-steps li.done { color: var(--ink); }
+.onboard-steps li.current { color: #111; background: var(--accent); }
+.onboard-card {
+  max-width: 640px; margin: 0 auto; text-align: center;
+}
+.onboard-card h2 {
+  font-family: "Fraunces", Georgia, serif; font-size: clamp(28px, 4vw, 42px); font-weight: 500; margin: 8px 0 12px;
+}
+.onboard-card p { color: var(--muted); line-height: 1.55; margin: 0 auto 18px; max-width: 520px; }
+.onboard-card .field { text-align: left; }
+.onboard-card .hero-drop { margin-bottom: 18px; }
+
 @media (max-width: 1100px) {
   .framework, .price-grid, .use-grid, .auth-page { grid-template-columns: 1fr; }
   .auth-side { border-right: none; border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 900px) {
+  .step-bar { display: none; }
 }
 @media (max-width: 640px) {
   .paths, .gallery-grid, .lib-grid, .framework, .price-grid, .use-grid { grid-template-columns: 1fr; }

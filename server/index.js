@@ -2,11 +2,15 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { configScript } from "./publicConfig.js";
+import { attachAiRoutes } from "./aiRoutes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const dist = path.join(__dirname, "..", "dist");
 const port = Number(process.env.PORT) || 8080;
+
+app.use(express.json({ limit: "20mb" }));
+attachAiRoutes(app);
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "chartforge" });

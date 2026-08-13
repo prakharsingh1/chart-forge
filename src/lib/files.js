@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { aiHeaders } from "./runtimeKey.js";
 
 function fileToBase64(file) {
   return new Promise((res, rej) => {
@@ -10,48 +11,16 @@ function fileToBase64(file) {
   });
 }
 
-async function extractPdfWithGemini(apiKey, file) {
+async function extractPdfWithGemini(file) {
   const b64 = await fileToBase64(file);
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { inlineData: { mimeType: "application/pdf", data: b64 } },
-              {
-                text: `Extract ALL content from this PDF for consulting charting.
-1. ALL text, headings, footnotes, captions
-2. ALL numbers, percentages, currency
-3. ALL tables as markdown tables with exact figures
-4. ALL charts: axes, series, every labeled data point
-5. Units and time periods
-
-Format:
-TITLE:
-FULL TEXT:
-TABLES:
-NUMERICAL DATA:
-CHARTS DESCRIBED:
-
-Be exhaustive. Do not invent numbers.`,
-              },
-            ],
-          },
-        ],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 16384 },
-      }),
-    }
-  );
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e?.error?.message || `PDF extract failed (${res.status})`);
-  }
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const res = await fetch("/api/ai/pdf", {
+    method: "POST",
+    headers: aiHeaders(),
+    body: JSON.stringify({ mimeType: "application/pdf", data: b64 }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `PDF extract failed (${res.status})`);
+  return data.text || "";
 }
 
 function tryParseTablesFromText(text) {
@@ -85,7 +54,7 @@ function tryParseTablesFromText(text) {
   return { data: rows, columns };
 }
 
-export async function extractTextFromFile(file, apiKey) {
+export async function extractTextFromFile(file) {
   const ext = file.name.split(".").pop().toLowerCase();
   if (ext === "csv" || ext === "tsv") {
     return new Promise((resolve) => {
@@ -131,8 +100,7 @@ export async function extractTextFromFile(file, apiKey) {
     });
   }
   if (ext === "pdf") {
-    if (!apiKey) throw new Error("A Gemini API key is required to extract PDFs.");
-    const text = await extractPdfWithGemini(apiKey, file);
+    const text = await extractPdfWithGemini(file);
     const { data, columns } = tryParseTablesFromText(text);
     return { text, data, columns, type: data.length ? "tabular" : "document", pdfExtracted: true };
   }

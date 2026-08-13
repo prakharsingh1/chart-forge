@@ -62,9 +62,12 @@ export function paletteFromTheme(theme) {
     .slice(0, 10);
   while (series.length < 10) series.push(series[series.length - 1] || "#1F4E79");
 
-  const ink = scheme.dk1 || series[0] || "#111118";
+  const inkRaw = scheme.dk1 || series[0] || "#111118";
+  const ink = luminance(inkRaw) > 0.72 ? "#111118" : inkRaw;
   const slide = scheme.lt1 && luminance(scheme.lt1) > 0.7 ? scheme.lt1 : "#FFFFFF";
-  const primary = scheme.accent1 || series[0];
+  const usable = series.filter((c) => luminance(c) < 0.82);
+  while (usable.length < 10) usable.push(usable[usable.length - 1] || ink);
+  const primary = scheme.accent1 && luminance(scheme.accent1) < 0.82 ? scheme.accent1 : usable[0];
   const font = theme.fonts?.[0] || "Calibri";
 
   return {
@@ -79,7 +82,7 @@ export function paletteFromTheme(theme) {
     muted: "#595959",
     grid: "#EDEDED",
     slide,
-    series,
+    series: usable,
     font: `'${font}', 'Calibri', 'Segoe UI', sans-serif`,
     fontFace: font,
   };
@@ -107,11 +110,15 @@ export async function extractPptxTheme(file, zip) {
 export function deckCorpus(deck) {
   return (deck?.slides || [])
     .map((s, i) => {
-      const texts = [s.title, s.subtitle, s.body, ...(s.originalTexts || [])].filter(Boolean);
-      return `Slide ${i + 1}\n${texts.join("\n")}`;
+      const lines = [
+        `=== Slide ${i + 1}: ${s.title || "(untitled)"} ===`,
+        s.subtitle ? `Subtitle: ${s.subtitle}` : "",
+        s.body || "",
+      ];
+      return lines.filter(Boolean).join("\n");
     })
     .join("\n\n")
-    .slice(0, 18000);
+    .slice(0, 22000);
 }
 
 export function guessIndustry(text) {
@@ -121,7 +128,7 @@ export function guessIndustry(text) {
     ["Healthcare", /hospital|pharma|patient|clinical|biotech|payer|provider/],
     ["Financial services", /bank|credit|aum|npl|fintech|insurance|underwrit/],
     ["Energy", /oil|gas|renewable|grid|lng|upstream|refin/],
-    ["Retail / CPG", /sku|same-store|gmv|omnichannel|private label|cpg/],
+    ["Retail / CPG", /sku|same-store|gmv|omnichannel|private label|cpg|fmcg|crore|logistics|transportation of goods/],
     ["Technology", /saas|arr|cloud|ai |semiconductor|software/],
     ["Telecom", /arpu|subscriber|5g|spectrum|churn/],
     ["Industrials", /capex|throughput|plant|manufactur|aerospace/],

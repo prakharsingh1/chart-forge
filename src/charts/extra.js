@@ -135,9 +135,9 @@ export function renderNightingale(container, data, pal) {
 }
 
 export function renderHeatmap(container, data, pal) {
-  const rows = data.rows || [];
-  const cols = data.cols || [];
+  const rows = data.rows || data.labels || [];
   const values = data.values || [];
+  const cols = data.cols || data.columns || (Array.isArray(values[0]) ? rows : []);
   if (!rows.length || !cols.length) return;
   const { W, H } = sizeOf(container);
   const M = { top: 36, right: 16, bottom: 16, left: 72 };
@@ -214,16 +214,18 @@ export function renderGauge(container, data, pal) {
 }
 
 export function renderKpis(container, data, pal) {
-  const items = data.items || data.kpis || [];
+  const items = (data.items || data.kpis || []).filter((it) => it && (it.label || it.name));
+  if (!items.length) return;
   const { W, H } = sizeOf(container);
   const svg = svgRoot(container, W, H);
-  const n = Math.max(items.length, 1);
+  const n = items.length;
   const cardW = (W - 24 - (n - 1) * 12) / n;
   items.forEach((it, i) => {
     const x = 12 + i * (cardW + 12);
+    const val = it.value == null || it.value === "" ? "—" : String(it.value);
     svg.append("rect").attr("x", x).attr("y", H / 2 - 54).attr("width", cardW).attr("height", 108).attr("rx", 16).attr("fill", pal.grid);
-    svg.append("text").attr("x", x + 18).attr("y", H / 2 - 20).attr("font-family", FONT).attr("font-size", "12px").attr("fill", pal.muted).text(it.label);
-    svg.append("text").attr("x", x + 18).attr("y", H / 2 + 18).attr("font-family", MONO).attr("font-size", "28px").attr("font-weight", 700).attr("fill", pal.ink).text(it.value);
+    svg.append("text").attr("x", x + 18).attr("y", H / 2 - 20).attr("font-family", FONT).attr("font-size", "12px").attr("fill", pal.muted).text(it.label || it.name);
+    svg.append("text").attr("x", x + 18).attr("y", H / 2 + 18).attr("font-family", MONO).attr("font-size", val.length > 8 ? "18px" : "28px").attr("font-weight", 700).attr("fill", pal.ink).text(val);
     if (it.delta) svg.append("text").attr("x", x + 18).attr("y", H / 2 + 40).attr("font-family", FONT).attr("font-size", "12px").attr("fill", String(it.delta).startsWith("-") ? pal.negative : pal.positive).text(it.delta);
   });
 }
