@@ -14,6 +14,7 @@ import { blankChart } from "./lib/blanks.js";
 import DataSheet from "./components/DataSheet.jsx";
 import ChartThumb from "./components/ChartThumb.jsx";
 import SuggestView from "./components/SuggestView.jsx";
+import MarketingHome from "./components/MarketingHome.jsx";
 import { useAuth } from "./auth/useAuth.js";
 import AuthScreen from "./auth/AuthScreen.jsx";
 import { deleteDeck, listDecks, loadDeck, saveDeck } from "./lib/db.js";
@@ -70,7 +71,7 @@ function SlideView({ slide, pal, onPatch }) {
 }
 
 export default function App() {
-  const { user, signOut, configured } = useAuth();
+  const { user, signOut } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [savedDecks, setSavedDecks] = useState([]);
   const [saveState, setSaveState] = useState("");
@@ -492,6 +493,19 @@ export default function App() {
           <span className="tag">{CHART_TYPES.length} charts</span>
         </div>
         <div className="top-actions">
+          {view === "home" && (
+            <>
+              <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("solution")?.scrollIntoView({ behavior: "smooth" })}>
+                Product
+              </button>
+              <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("use-cases")?.scrollIntoView({ behavior: "smooth" })}>
+                Use cases
+              </button>
+              <button className="btn btn-sm btn-ghost" onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>
+                Pricing
+              </button>
+            </>
+          )}
           <button className="btn btn-sm btn-primary" onClick={() => setLibraryOpen(true)}>
             Chart library
           </button>
@@ -513,8 +527,8 @@ export default function App() {
               </button>
             </>
           ) : (
-            <button className="btn btn-sm btn-primary" onClick={() => setAuthOpen(true)}>
-              {configured ? "Log in" : "Log in"}
+            <button className="btn btn-sm btn-primary" onClick={() => setView("login")}>
+              Log in
             </button>
           )}
           {keySet && (
@@ -531,95 +545,29 @@ export default function App() {
       </header>
 
       {view === "home" && (
-        <>
-          <section className="hero">
-            <div className="eyebrow">Think-Cell depth · no data entry · {CHART_TYPES.length} exhibits</div>
-            <h2>Drop the deck. Get the charts.</h2>
-            <p>
-              Flourish and Think-Cell make you type the numbers. ChartForge reads your PowerPoint, matches its colors and type, then hands you partner-ready exhibits — including industry growth pulled from the web.
-            </p>
-            <div
-              className={`hero-drop ${dragOver ? "over" : ""}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                const f = e.dataTransfer.files[0];
-                if (f) handleFile(f);
-              }}
-              onClick={() => pptxRef.current?.click()}
-            >
-              <div className="hero-drop-mark">PPTX</div>
-              <strong>Drop a PowerPoint</strong>
-              <span>We extract the story, theme, and figures. You paste or download.</span>
-            </div>
-            <div className="hero-cta">
-              <button className="btn btn-primary" onClick={() => pptxRef.current?.click()}>
-                Upload PPTX
-              </button>
-              <button className="btn" onClick={() => setLibraryOpen(true)}>
-                Browse chart types
-              </button>
-              <button className="btn btn-ghost" onClick={() => (user ? setView("studio") : setAuthOpen(true))}>
-                {user ? "Open studio" : "Log in"}
-              </button>
-            </div>
-          </section>
-          <div className="paths">
-            <button className="path" onClick={() => pptxRef.current?.click()}>
-              <kbd>01</kbd>
-              <h3>Read the PPTX</h3>
-              <p>Titles, tables, colors, fonts. No spreadsheet to rebuild.</p>
-            </button>
-            <button className="path" onClick={() => setLibraryOpen(true)}>
-              <kbd>02</kbd>
-              <h3>Suggest exhibits</h3>
-              <p>Waterfalls, Mekkos, industry CAGR — prefilled, Think-Cell grade.</p>
-            </button>
-            <button className="path" onClick={() => setView("studio")}>
-              <kbd>03</kbd>
-              <h3>Paste or PNG</h3>
-              <p>Native PowerPoint objects, or a clean image. Values stay live.</p>
-            </button>
-            <button className="path" onClick={() => openDemo(DEMOS[0])}>
-              <kbd>Try</kbd>
-              <h3>EBIT bridge</h3>
-              <p>Open a finished waterfall. Change a cell. Watch it move.</p>
-            </button>
-          </div>
-          <section className="lib-home">
-            <h3>Every type, with a picture</h3>
-            <div className="lib-grid">
-              {CHART_TYPES.slice(0, 12).map((t) => (
-                <button key={t.id} className="type-card" onClick={() => { setView("studio"); pickType(t.id); }}>
-                  <ChartThumb type={t} />
-                  <div className="cat">{t.cat}</div>
-                  <h4>{t.name}</h4>
-                  <p>{t.desc}</p>
-                </button>
-              ))}
-            </div>
-            <div style={{ textAlign: "center", marginTop: 16 }}>
-              <button className="btn" onClick={() => setLibraryOpen(true)}>See all {CHART_TYPES.length} →</button>
-            </div>
-          </section>
-          <section className="gallery">
-            <h3>Starter decks</h3>
-            <div className="gallery-grid">
-              {DEMOS.map((d) => (
-                <button key={d.id} className="demo-card" onClick={() => openDemo(d)}>
-                  <div className="firm">{d.firm}</div>
-                  <h4>{d.name}</h4>
-                  <p>{d.blurb}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        </>
+        <MarketingHome
+          dragOver={dragOver}
+          setDragOver={setDragOver}
+          onDropFile={(f) => handleFile(f)}
+          onUpload={() => pptxRef.current?.click()}
+          onLogin={() => setView("login")}
+          onStudio={() => (user ? setView("studio") : setView("login"))}
+          onLibrary={() => setLibraryOpen(true)}
+          onDemo={openDemo}
+          demos={DEMOS}
+          onPlan={(name) => {
+            if (name === "Firm") window.location.href = "mailto:snghprakhar@gmail.com?subject=ChartForge%20Firm";
+            else setView("login");
+          }}
+        />
+      )}
+
+      {view === "login" && (
+        <AuthScreen
+          variant="page"
+          onClose={() => setView("home")}
+          onSuccess={() => setView("home")}
+        />
       )}
 
       {view === "suggest" && (

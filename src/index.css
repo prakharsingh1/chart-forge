@@ -331,7 +331,84 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
   .paths, .gallery-grid, .lib-grid { grid-template-columns: 1fr 1fr; }
   .studio.deck-mode { grid-template-columns: 1fr; }
 }
+.trust-row {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center;
+  margin-top: 28px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.mkt-band { padding: 64px 24px; border-top: 1px solid var(--line); }
+.mkt-band.alt { background: rgba(255,255,255,.02); }
+.mkt-inner { max-width: 1080px; margin: 0 auto; }
+.mkt-kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 8px;
+}
+.mkt-inner h3, .mkt h3 {
+  font-family: "Fraunces", Georgia, serif; font-size: clamp(26px, 3vw, 36px);
+  font-weight: 500; letter-spacing: -0.03em; margin: 0 0 22px;
+}
+.mkt-lead { color: var(--muted); max-width: 560px; margin: -8px 0 18px; font-size: 14px; line-height: 1.5; }
+.framework { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+.fw-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px;
+}
+.fw-card kbd { font-family: inherit; color: var(--accent); font-size: 11px; font-weight: 800; }
+.fw-card h4 { margin: 10px 0 8px; font-size: 17px; }
+.fw-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.compare-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 16px; }
+.compare { width: 100%; border-collapse: collapse; font-size: 13px; }
+.compare th, .compare td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+.compare th { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.compare td.on, .compare th.on { background: rgba(200,245,66,.08); color: var(--ink); font-weight: 600; }
+.use-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.use-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px;
+}
+.use-card h4 { margin: 8px 0 8px; font-size: 18px; }
+.use-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.price-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 24px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.price-card.featured { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.price-card h4 { margin: 0; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.price { font-size: 36px; font-weight: 800; letter-spacing: -0.04em; }
+.price small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+.price-card ul { margin: 0; padding: 0 0 8px 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.price-card .btn { margin-top: auto; justify-content: center; }
+.mkt-foot {
+  max-width: 1080px; margin: 0 auto; padding: 28px 24px 48px;
+  display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  border-top: 1px solid var(--line); color: var(--muted); font-size: 13px;
+}
+.mkt-foot p { margin: 4px 0 0; }
+.mkt-foot-links { display: flex; gap: 16px; align-items: center; }
+
+.auth-page {
+  min-height: calc(100vh - 64px);
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.auth-side {
+  padding: 56px 48px; background: linear-gradient(180deg, rgba(109,94,246,.2), transparent);
+  border-right: 1px solid var(--line);
+}
+.auth-side h2 {
+  font-family: "Fraunces", Georgia, serif; font-size: 36px; font-weight: 500;
+  letter-spacing: -0.03em; margin: 18px 0 12px;
+}
+.auth-side p { color: var(--muted); line-height: 1.55; max-width: 420px; }
+.auth-side ul { color: var(--muted); line-height: 1.8; padding-left: 18px; }
+.auth-panel { max-width: 420px; margin: 48px auto; padding: 0 24px; }
+.auth-panel-head h3 { margin: 0 0 8px; font-size: 24px; }
+.auth-panel-head p { margin: 0 0 18px; }
+
+@media (max-width: 1100px) {
+  .framework, .price-grid, .use-grid, .auth-page { grid-template-columns: 1fr; }
+  .auth-side { border-right: none; border-bottom: 1px solid var(--line); }
+}
 @media (max-width: 640px) {
-  .paths, .gallery-grid, .lib-grid { grid-template-columns: 1fr; }
+  .paths, .gallery-grid, .lib-grid, .framework, .price-grid, .use-grid { grid-template-columns: 1fr; }
   .hero h2 { font-size: 32px; }
+  .mkt-foot { flex-direction: column; align-items: flex-start; }
 }
