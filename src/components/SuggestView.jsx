@@ -1,27 +1,46 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { chartMeta } from "../theme.js";
 import { renderChart } from "../charts/render.js";
-import { useEffect } from "react";
 import ChartThumb from "./ChartThumb.jsx";
 
 function MiniChart({ chart, pal }) {
   const ref = useRef(null);
+  const [empty, setEmpty] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el || !chart) return;
     const draw = () => {
-      try {
-        renderChart(el, chart, pal);
-      } catch {
-        el.innerHTML = "";
-      }
+      const ok = renderChart(el, chart, pal);
+      setEmpty(!ok);
+      if (!ok) el.innerHTML = "";
     };
-    draw();
+    const id = requestAnimationFrame(draw);
     const ro = new ResizeObserver(draw);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(id);
+      ro.disconnect();
+    };
   }, [chart, pal]);
-  return <div className="suggest-mini" ref={ref} />;
+  return (
+    <div className="suggest-mini-wrap">
+      <div className="suggest-mini" ref={ref} />
+      {empty && (
+        <div className="suggest-mini-fallback">
+          <ChartThumb type={chartMeta(chart.chartType)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function slideLabel(s, i) {
+  const t = (s.title || "").trim();
+  if (t && t.toLowerCase() !== `slide ${i + 1}` && t.length > 3) return t;
+  const sub = (s.subtitle || "").trim();
+  if (sub.length > 3) return sub;
+  const body = (s.body || "").split("\n").find((l) => l.trim().length > 8);
+  return (body || t || `Slide ${i + 1}`).slice(0, 72);
 }
 
 export default function SuggestView({
@@ -138,11 +157,14 @@ export default function SuggestView({
       {!!deck?.slides?.length && (
         <section className="suggest-slides">
           <h3>Slides we read</h3>
+          <p className="muted" style={{ margin: "0 0 12px" }}>
+            Titles from the title placeholder, not leftover text runs. Tables and native charts are sent to the model.
+          </p>
           <div className="suggest-slide-row">
-            {deck.slides.slice(0, 12).map((s, i) => (
+            {deck.slides.slice(0, 18).map((s, i) => (
               <button key={s.id} className="slide-chip" onClick={onOpenStudio}>
                 <span>{i + 1}</span>
-                <em>{s.title}</em>
+                <em>{slideLabel(s, i)}</em>
               </button>
             ))}
           </div>

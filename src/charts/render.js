@@ -301,8 +301,12 @@ export function renderHorizontalBar(container, data, pal, unit) {
 
 export function renderGroupedBar(container, data, pal, unit) {
   const cats = data.categories || [];
-  const series = data.series || [];
+  let series = (data.series || []).filter((s) => Array.isArray(s.values));
   if (!cats.length) return;
+  if (!series.length && (data.items || []).length) {
+    series = [{ name: "Value", values: data.items.map((it) => Number(it.value) || 0) }];
+  }
+  if (!series.length) return;
   const { W, H } = sizeOf(container);
   const M = { top: 16, right: 128, bottom: 52, left: 52 };
   const w = W - M.left - M.right;
@@ -310,21 +314,23 @@ export function renderGroupedBar(container, data, pal, unit) {
   const svg = svgRoot(container, W, H);
   const g = svg.append("g").attr("transform", `translate(${M.left},${M.top})`);
   const x0 = d3.scaleBand().domain(cats).range([0, w]).paddingInner(0.22);
-  const x1 = d3.scaleBand().domain(series.map((s) => s.name)).range([0, x0.bandwidth()]).padding(0.12);
-  const y = d3.scaleLinear().domain([0, d3.max(series, (s) => d3.max(s.values.map(Number))) * 1.18]).range([h, 0]);
+  const x1 = d3.scaleBand().domain(series.map((s) => s.name)).range([0, Math.max(x0.bandwidth(), 1)]).padding(0.12);
+  const yMax = d3.max(series, (s) => d3.max((s.values || []).map(Number))) || 1;
+  const y = d3.scaleLinear().domain([0, yMax * 1.18]).range([h, 0]);
   const color = d3.scaleOrdinal().domain(series.map((s) => s.name)).range(pal.series);
   gridY(g, y, w, pal);
   cats.forEach((cat, ci) => {
     series.forEach((s) => {
       const val = Number(s.values[ci]) || 0;
+      const bw = Math.max(x1.bandwidth(), 2);
       g.append("rect")
-        .attr("x", x0(cat) + x1(s.name))
+        .attr("x", (x0(cat) || 0) + (x1(s.name) || 0))
         .attr("y", y(val))
-        .attr("width", x1.bandwidth())
-        .attr("height", h - y(val))
+        .attr("width", bw)
+        .attr("height", Math.max(0, h - y(val)))
         .attr("fill", color(s.name));
       g.append("text")
-        .attr("x", x0(cat) + x1(s.name) + x1.bandwidth() / 2)
+        .attr("x", (x0(cat) || 0) + (x1(s.name) || 0) + bw / 2)
         .attr("y", y(val) - 5)
         .attr("text-anchor", "middle")
         .attr("font-family", MONO)
@@ -667,6 +673,7 @@ export function renderGantt(container, data, pal) {
 
 import { EXTRA_RENDERERS } from "./extra.js";
 import { FINANCE_RENDERERS } from "./finance.js";
+import { normalizeChartData } from "../lib/chartData.js";
 
 const RENDERERS = {
   waterfall: renderWaterfall,
@@ -706,14 +713,18 @@ const RENDERERS = {
 };
 
 export function renderChart(container, chart, pal) {
-  if (!container || !chart?.data) return;
+  if (!container || !chart) return false;
+  const data = normalizeChartData(chart.chartType, chart.data || {});
   const fn = RENDERERS[chart.chartType];
-  if (!fn) return;
+  if (!fn) return false;
   try {
-    fn(container, chart.data, pal, chart.unit || "");
+    fn(container, data, pal, chart.unit || "");
+    const drawn = container.querySelectorAll("rect, path, circle, line, text, polygon");
+    return drawn.length > 0;
   } catch (e) {
     console.error(chart.chartType, e);
     d3.select(container).selectAll("*").remove();
     d3.select(container).append("div").style("padding", "24px").style("color", "#a00").text(`Could not render ${chart.chartType}`);
+    return false;
   }
 }

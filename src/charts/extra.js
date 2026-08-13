@@ -135,9 +135,9 @@ export function renderNightingale(container, data, pal) {
 }
 
 export function renderHeatmap(container, data, pal) {
-  const rows = data.rows || [];
-  const cols = data.cols || [];
+  const rows = data.rows || data.labels || [];
   const values = data.values || [];
+  const cols = data.cols || data.columns || (Array.isArray(values[0]) ? rows : []);
   if (!rows.length || !cols.length) return;
   const { W, H } = sizeOf(container);
   const M = { top: 36, right: 16, bottom: 16, left: 72 };
