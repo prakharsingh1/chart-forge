@@ -3,24 +3,33 @@ import { CHART_TYPES } from "../theme.js";
 
 const MODEL = "gemini-2.5-pro";
 
-export async function geminiCall(apiKey, prompt, temperature = 0.15) {
+function partsText(data) {
+  return (data?.candidates?.[0]?.content?.parts || [])
+    .map((p) => p.text || "")
+    .join("");
+}
+
+export async function geminiCall(apiKey, prompt, temperature = 0.15, { search = false } = {}) {
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: 16384 },
+  };
+  if (search) body.tools = [{ googleSearch: {} }];
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature, maxOutputTokens: 16384 },
-      }),
+      body: JSON.stringify(body),
     }
   );
   if (!res.ok) {
+    if (search) return geminiCall(apiKey, prompt, temperature, { search: false });
     const e = await res.json().catch(() => ({}));
     throw new Error(e?.error?.message || `Gemini error ${res.status}`);
   }
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "";
+  const text = partsText(data);
   if (!text) throw new Error("Empty model response");
   return text;
 }
@@ -203,4 +212,60 @@ export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
     `Fill this one PowerPoint slide with a consulting exhibit.\n${text}`
   );
   return charts[0];
+}
+
+export async function suggestFromDeck(apiKey, { corpus, industryHint, fileName }) {
+  const prompt = `${DESIGN_RULES}
+
+The user dropped a PowerPoint. They must NOT type data. You extract numbers from the deck AND enrich with current industry facts via web search.
+
+FILE: ${fileName || "deck.pptx"}
+INDUSTRY HINT: ${industryHint || "detect from text"}
+
+DECK TEXT:
+${(corpus || "").slice(0, 14000)}
+
+Use Google Search for the industry (market size, CAGR, share, recent year). Label those charts origin="web". Charts whose numbers come from the PPTX are origin="deck". Never mix invented deck figures with web figures in the same series without saying so in the source line.
+
+Return ONLY JSON:
+{
+  "industry": "short industry name",
+  "industry_why": "one sentence why you classified it",
+  "executive_summary": "2 sentences a partner would read",
+  "key_metrics": [{"name":"","value":"","trend":"up|down|stable"}],
+  "suggestions": [
+    {
+      "origin": "deck|web",
+      "why": "why this exhibit for THIS deck",
+      "id": "s1",
+      "chartType": "waterfall",
+      "title": "Action title",
+      "subtitle": "Metric, unit, period, scope",
+      "insight": "One-line takeaway",
+      "source": "Source: ...",
+      "unit": "$B|%|pp",
+      "data": {}
+    }
+  ]
+}
+
+Produce 8–10 suggestions:
+- At least 4 origin=deck (bridges, mix, ranked bars, combo from slide numbers)
+- At least 3 origin=web (industry growth, competitive share, TAM/CAGR — Think-Cell depth, detailed bars)
+Prefer waterfall, grouped_bar, stacked_bar, 100_stacked, marimekko, combo, line_trend, tornado, horizontal_bar.
+Use the data shapes from generateChartData. Numbers must reconcile.`;
+
+  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12, { search: true }));
+  const suggestions = parsed.suggestions || parsed.charts || [];
+  return {
+    industry: parsed.industry || industryHint || "",
+    industry_why: parsed.industry_why || "",
+    executive_summary: parsed.executive_summary || "",
+    key_metrics: parsed.key_metrics || [],
+    suggestions: suggestions.map((s, i) => ({
+      ...s,
+      id: s.id || `sug_${i}`,
+      origin: s.origin === "web" ? "web" : "deck",
+    })),
+  };
 }

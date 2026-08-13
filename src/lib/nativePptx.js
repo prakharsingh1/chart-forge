@@ -24,7 +24,7 @@ function chrome(slide, s, pal, pptx) {
     w: 12.5,
     h: 0.52,
     fontSize: 20,
-    fontFace: "Calibri",
+    fontFace: pal.fontFace || "Calibri",
     bold: true,
     color: hex(pal.ink),
     valign: "middle",
@@ -35,7 +35,7 @@ function chrome(slide, s, pal, pptx) {
     w: 12.5,
     h: 0.28,
     fontSize: 12,
-    fontFace: "Calibri",
+    fontFace: pal.fontFace || "Calibri",
     color: hex(pal.muted),
   });
   slide.addText(s.source || "Source: ChartForge", {
@@ -565,8 +565,8 @@ function addChartObject(slide, pptx, chart, pal) {
   else addDataTable(slide, pptx, chart, pal);
 }
 
-export async function exportNativeDeck(deck, paletteKey) {
-  const pal = PALETTES[paletteKey] || PALETTES.mckinsey;
+export async function exportNativeDeck(deck, paletteKey, customPal) {
+  const pal = customPal || PALETTES[paletteKey] || PALETTES.mckinsey;
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
   pptx.layout = "WIDE";

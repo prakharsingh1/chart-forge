@@ -1,39 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PALETTES, CHART_TYPES, CHART_CATS, chartMeta } from "./theme.js";
 import { extractTextFromFile } from "./lib/files.js";
-import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide } from "./lib/ai.js";
+import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide, suggestFromDeck } from "./lib/ai.js";
 import { renderChart } from "./charts/render.js";
 import { DEMOS } from "./data/demos.js";
 import { downloadDataUrl, downloadSvg, exportExcel, svgToPngDataUrl } from "./lib/export.js";
 import { slug } from "./lib/format.js";
 import { importPptx, deckToFileContent } from "./lib/pptxImport.js";
+import { extractPptxTheme, deckCorpus, guessIndustry } from "./lib/pptxTheme.js";
 import { exportNativeDeck } from "./lib/nativePptx.js";
-import { deckFromCharts, emptySlide, uid } from "./lib/deck.js";
+import { deckFromCharts, emptySlide, uid, slideFromChart } from "./lib/deck.js";
 import { blankChart } from "./lib/blanks.js";
 import DataSheet from "./components/DataSheet.jsx";
+import ChartThumb from "./components/ChartThumb.jsx";
+import SuggestView from "./components/SuggestView.jsx";
 import { useAuth } from "./auth/useAuth.js";
 import AuthScreen from "./auth/AuthScreen.jsx";
 import { deleteDeck, listDecks, loadDeck, saveDeck } from "./lib/db.js";
 
-function ChartCanvas({ chart, paletteKey }) {
+function ChartCanvas({ chart, pal }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || !chart) return;
-    const pal = PALETTES[paletteKey];
     const draw = () => renderChart(el, chart, pal);
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [chart, paletteKey]);
+  }, [chart, pal]);
   return <div className="slide-chart" ref={ref} />;
 }
 
-function SlideView({ slide, paletteKey, onPatch }) {
+function SlideView({ slide, pal, onPatch }) {
+  const font = pal.font || pal.fontFace;
   return (
-    <div className="slide">
-      <div className="slide-rule" style={{ background: PALETTES[paletteKey].primary }} />
+    <div className="slide" style={{ fontFamily: font }}>
+      <div className="slide-rule" style={{ background: pal.primary }} />
       <div className="slide-copy">
         <input
           className="slide-title-edit"
@@ -49,7 +52,7 @@ function SlideView({ slide, paletteKey, onPatch }) {
         />
       </div>
       {slide.chart ? (
-        <ChartCanvas chart={{ ...slide.chart, title: slide.title, subtitle: slide.subtitle }} paletteKey={paletteKey} />
+        <ChartCanvas chart={{ ...slide.chart, title: slide.title, subtitle: slide.subtitle }} pal={pal} />
       ) : (
         <div className="slide-empty">No chart on this slide yet. Insert one or let AI fill from the slide text.</div>
       )}
@@ -75,6 +78,8 @@ export default function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gk") || "");
   const [keySet, setKeySet] = useState(() => !!localStorage.getItem("gk"));
   const [palette, setPalette] = useState("forge");
+  const [deckPal, setDeckPal] = useState(null);
+  const [suggestPack, setSuggestPack] = useState(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libQuery, setLibQuery] = useState("");
   const [libCat, setLibCat] = useState("All");
@@ -95,6 +100,8 @@ export default function App() {
   const slides = deck?.slides || [];
   const active = slides[selected];
   const insights = deck?.insights;
+  const palettes = deckPal ? { ...PALETTES, deck: deckPal } : PALETTES;
+  const activePal = palettes[palette] || PALETTES.forge;
 
   const saveKey = () => {
     localStorage.setItem("gk", apiKey.trim());
@@ -135,18 +142,48 @@ export default function App() {
     setView("studio");
   };
 
+  const runSuggestions = async (imported, key) => {
+    const corpus = deckCorpus(imported);
+    const industryHint = guessIndustry(corpus);
+    setLoadMsg(`Detecting ${industryHint} exhibits…`);
+    try {
+      const pack = await suggestFromDeck(key, { corpus, industryHint, fileName: imported.name });
+      setSuggestPack(pack);
+      if (pack.executive_summary) {
+        setDeck((d) => (d ? { ...d, insights: { ...pack, title: imported.name } } : d));
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const handlePptx = async (f) => {
     setLoadMsg("Opening PowerPoint…");
     setLoading(true);
     setError("");
     try {
       const imported = await importPptx(f);
+      let theme = null;
+      try {
+        theme = await extractPptxTheme(f);
+      } catch {
+        theme = null;
+      }
+      if (theme?.palette) {
+        setDeckPal(theme.palette);
+        setPalette("deck");
+      }
       setDeck(imported);
       setFile(f);
       setFileContent(deckToFileContent(imported));
       setSelected(0);
-      setView("studio");
-      if (imported.roundTrip) setLoadMsg("");
+      setSuggestPack(null);
+      setView("suggest");
+      const key = apiKey.trim() || localStorage.getItem("gk") || "";
+      if (key) {
+        setLoadMsg("Prefilling charts from the deck + industry data…");
+        await runSuggestions(imported, key);
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -308,11 +345,12 @@ export default function App() {
     setBrief("");
     setError("");
     setSelected(0);
+    setSuggestPack(null);
   };
 
   const exportPpt = async () => {
     if (!deck?.slides?.length) return;
-    await exportNativeDeck({ ...deck, name: deck.name || "ChartForge" }, palette);
+    await exportNativeDeck({ ...deck, name: deck.name || "ChartForge" }, palette, palette === "deck" ? deckPal : null);
   };
 
   const exportOnePng = async () => {
@@ -325,6 +363,55 @@ export default function App() {
   const exportOneSvg = () => {
     const svg = stageRef.current?.querySelector(".slide svg");
     if (svg) downloadSvg(svg, active?.title);
+  };
+
+  const openSuggestion = (s) => {
+    const slide = slideFromChart(s);
+    setDeck((d) => {
+      const base = d || { name: file?.name || "ChartForge deck.pptx", slides: [], insights: suggestPack };
+      const exists = (base.slides || []).findIndex((x) => x.chart?.id === s.id);
+      if (exists >= 0) {
+        setSelected(exists);
+        return base;
+      }
+      setSelected(base.slides.length);
+      return { ...base, insights: suggestPack || base.insights, slides: [...base.slides, slide] };
+    });
+    setView("studio");
+  };
+
+  const addAllSuggestions = () => {
+    const charts = (suggestPack?.suggestions || []).filter((s) => s.data);
+    if (!charts.length) {
+      setView("studio");
+      return;
+    }
+    setDeck((d) => ({
+      ...(d || { name: file?.name || "ChartForge.pptx", slides: [] }),
+      insights: suggestPack,
+      slides: charts.map((c) => slideFromChart(c)),
+    }));
+    setSelected(0);
+    setView("studio");
+  };
+
+  const exportSuggestionPptx = async (s) => {
+    await exportNativeDeck({ name: s.title, slides: [slideFromChart(s)] }, palette, palette === "deck" ? deckPal : null);
+  };
+
+  const exportSuggestionPng = async (s) => {
+    const host = document.createElement("div");
+    host.style.cssText = "position:fixed;left:-9999px;width:960px;height:540px;background:#fff";
+    document.body.appendChild(host);
+    try {
+      renderChart(host, s, activePal);
+      const svg = host.querySelector("svg");
+      if (!svg) return;
+      const png = await svgToPngDataUrl(svg, s.title);
+      downloadDataUrl(png, `${slug(s.title)}.png`);
+    } finally {
+      host.remove();
+    }
   };
 
   const pickType = (type) => {
@@ -410,7 +497,7 @@ export default function App() {
           </button>
           <input ref={pptxRef} type="file" accept=".pptx,.pptm" hidden onChange={(e) => e.target.files[0] && handlePptx(e.target.files[0])} />
           <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
-            Open PPTX
+            Drop PPTX
           </button>
           {deck && (
             <button className="btn btn-sm btn-primary" onClick={exportPpt} disabled={loading}>
@@ -446,47 +533,70 @@ export default function App() {
       {view === "home" && (
         <>
           <section className="hero">
-            <div className="eyebrow">Flourish energy · Think-Cell depth · {CHART_TYPES.length} types</div>
-            <h2>Charts that look expensive. Built in a minute.</h2>
+            <div className="eyebrow">Think-Cell depth · no data entry · {CHART_TYPES.length} exhibits</div>
+            <h2>Drop the deck. Get the charts.</h2>
             <p>
-              The visual library B2B teams actually want — waterfalls, Mekkos, Sankeys, treemaps, cohorts — editable
-              values, native PowerPoint out.
+              Flourish and Think-Cell make you type the numbers. ChartForge reads your PowerPoint, matches its colors and type, then hands you partner-ready exhibits — including industry growth pulled from the web.
             </p>
+            <div
+              className={`hero-drop ${dragOver ? "over" : ""}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files[0];
+                if (f) handleFile(f);
+              }}
+              onClick={() => pptxRef.current?.click()}
+            >
+              <div className="hero-drop-mark">PPTX</div>
+              <strong>Drop a PowerPoint</strong>
+              <span>We extract the story, theme, and figures. You paste or download.</span>
+            </div>
             <div className="hero-cta">
-              <button className="btn btn-primary" onClick={() => (user ? setLibraryOpen(true) : setAuthOpen(true))}>
-                {user ? `Browse ${CHART_TYPES.length} charts` : "Log in to start"}
+              <button className="btn btn-primary" onClick={() => pptxRef.current?.click()}>
+                Upload PPTX
               </button>
-              <button className="btn" onClick={() => setView("studio")}>Open studio</button>
-              <button className="btn btn-ghost" onClick={() => pptxRef.current?.click()}>Drop a PPTX</button>
+              <button className="btn" onClick={() => setLibraryOpen(true)}>
+                Browse chart types
+              </button>
+              <button className="btn btn-ghost" onClick={() => (user ? setView("studio") : setAuthOpen(true))}>
+                {user ? "Open studio" : "Log in"}
+              </button>
             </div>
           </section>
           <div className="paths">
             <button className="path" onClick={() => pptxRef.current?.click()}>
-              <kbd>Deck in</kbd>
-              <h3>Upload PowerPoint</h3>
-              <p>AI pastes exhibits onto your slides. Every number stays live.</p>
+              <kbd>01</kbd>
+              <h3>Read the PPTX</h3>
+              <p>Titles, tables, colors, fonts. No spreadsheet to rebuild.</p>
             </button>
-            <button className="path" onClick={() => { setView("studio"); setLibraryOpen(true); }}>
-              <kbd>Library</kbd>
-              <h3>Pick a chart</h3>
-              <p>{CHART_TYPES.length} B2B-ready types. Click, edit the sheet, ship.</p>
+            <button className="path" onClick={() => setLibraryOpen(true)}>
+              <kbd>02</kbd>
+              <h3>Suggest exhibits</h3>
+              <p>Waterfalls, Mekkos, industry CAGR — prefilled, Think-Cell grade.</p>
             </button>
             <button className="path" onClick={() => setView("studio")}>
-              <kbd>Brief</kbd>
-              <h3>Describe it</h3>
-              <p>Paste the so-what and the figures. We design the exhibit.</p>
+              <kbd>03</kbd>
+              <h3>Paste or PNG</h3>
+              <p>Native PowerPoint objects, or a clean image. Values stay live.</p>
             </button>
             <button className="path" onClick={() => openDemo(DEMOS[0])}>
               <kbd>Try</kbd>
               <h3>EBIT bridge</h3>
-              <p>A finished McKinsey-style waterfall. Change a cell, watch it move.</p>
+              <p>Open a finished waterfall. Change a cell. Watch it move.</p>
             </button>
           </div>
           <section className="lib-home">
-            <h3>The library</h3>
+            <h3>Every type, with a picture</h3>
             <div className="lib-grid">
-              {CHART_TYPES.slice(0, 16).map((t) => (
+              {CHART_TYPES.slice(0, 12).map((t) => (
                 <button key={t.id} className="type-card" onClick={() => { setView("studio"); pickType(t.id); }}>
+                  <ChartThumb type={t} />
                   <div className="cat">{t.cat}</div>
                   <h4>{t.name}</h4>
                   <p>{t.desc}</p>
@@ -510,6 +620,48 @@ export default function App() {
             </div>
           </section>
         </>
+      )}
+
+      {view === "suggest" && (
+        <SuggestView
+          deck={deck}
+          pack={suggestPack}
+          pal={activePal}
+          loading={loading}
+          loadMsg={loadMsg}
+          error={error}
+          keySet={keySet}
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+          onSaveKey={() => {
+            saveKey();
+            if (deck) {
+              setLoading(true);
+              runSuggestions(deck, apiKey.trim()).finally(() => {
+                setLoading(false);
+                setLoadMsg("");
+              });
+            }
+          }}
+          onOpenStudio={() => setView("studio")}
+          onAddAll={addAllSuggestions}
+          onOpenChart={openSuggestion}
+          onPng={exportSuggestionPng}
+          onPptxOne={exportSuggestionPptx}
+          onRetry={async () => {
+            if (!deck) return;
+            setLoading(true);
+            setError("");
+            try {
+              await runSuggestions(deck, apiKey.trim() || localStorage.getItem("gk"));
+            } catch (e) {
+              setError(e.message);
+            } finally {
+              setLoading(false);
+              setLoadMsg("");
+            }
+          }}
+        />
       )}
 
       {view === "studio" && (
@@ -631,11 +783,11 @@ export default function App() {
 
             <h4>Firm palette</h4>
             <div className="palettes">
-              {Object.entries(PALETTES).map(([key, p]) => (
+              {Object.entries(palettes).map(([key, p]) => (
                 <button key={key} className={`pal ${palette === key ? "on" : ""}`} onClick={() => setPalette(key)}>
                   <span className="swatch">
                     {p.series.slice(0, 5).map((c) => (
-                      <i key={c} style={{ background: c }} />
+                      <i key={c + key} style={{ background: c }} />
                     ))}
                   </span>
                   {p.name}
@@ -709,7 +861,7 @@ export default function App() {
               </div>
             )}
 
-            {active && <SlideView slide={active} paletteKey={palette} onPatch={patchSlide} />}
+            {active && <SlideView slide={active} pal={activePal} onPatch={patchSlide} />}
           </main>
 
           <aside className="inspector">
@@ -717,6 +869,12 @@ export default function App() {
             {!active && <p className="muted">Select or add a slide.</p>}
             {active && (
               <>
+                <div className="chips" style={{ marginBottom: 10 }}>
+                  <button className="btn btn-sm" onClick={exportOnePng}>PNG</button>
+                  <button className="btn btn-sm" onClick={async () => active.chart && exportSuggestionPptx(active.chart)}>
+                    This slide · PPTX
+                  </button>
+                </div>
                 <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setLibraryOpen(true)}>
                   {CHART_TYPES.length} chart types
                 </button>
@@ -796,6 +954,7 @@ export default function App() {
             <div className="lib-grid">
               {visibleTypes.map((t) => (
                 <button key={t.id} className="type-card" onClick={() => { setView("studio"); pickType(t.id); }}>
+                  <ChartThumb type={t} />
                   <div className="cat">{t.cat}</div>
                   <h4>{t.name}</h4>
                   <p>{t.desc}</p>
