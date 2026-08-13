@@ -455,6 +455,25 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 .auth-panel-head h3 { margin: 0 0 8px; font-size: 24px; }
 .auth-panel-head p { margin: 0 0 18px; }
 
+.onboard { padding: 36px 24px 80px; }
+.onboard-steps {
+  display: flex; gap: 8px; list-style: none; margin: 0 auto 28px; padding: 0; justify-content: center; flex-wrap: wrap;
+}
+.onboard-steps li {
+  font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 12px; border-radius: 999px;
+}
+.onboard-steps li.done { color: var(--ink); }
+.onboard-steps li.current { color: #111; background: var(--accent); }
+.onboard-card {
+  max-width: 640px; margin: 0 auto; text-align: center;
+}
+.onboard-card h2 {
+  font-family: "Fraunces", Georgia, serif; font-size: clamp(28px, 4vw, 42px); font-weight: 500; margin: 8px 0 12px;
+}
+.onboard-card p { color: var(--muted); line-height: 1.55; margin: 0 auto 18px; max-width: 520px; }
+.onboard-card .field { text-align: left; }
+.onboard-card .hero-drop { margin-bottom: 18px; }
+
 @media (max-width: 1100px) {
   .framework, .price-grid, .use-grid, .auth-page { grid-template-columns: 1fr; }
   .auth-side { border-right: none; border-bottom: 1px solid var(--line); }

@@ -2,11 +2,12 @@ import { parseJsonLoose } from "./format.js";
 import { CHART_TYPES } from "../theme.js";
 import { normalizeChartData } from "./chartData.js";
 import { upgradeSuggestion, dropEmpty } from "./quality.js";
+import { aiHeaders } from "./runtimeKey.js";
 
 export async function geminiCall(prompt, temperature = 0.15, { search = false } = {}) {
   const res = await fetch("/api/ai", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: aiHeaders(),
     body: JSON.stringify({ prompt, temperature, search }),
   });
   const data = await res.json().catch(() => ({}));

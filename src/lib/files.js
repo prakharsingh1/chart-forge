@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { aiHeaders } from "./runtimeKey.js";
 
 function fileToBase64(file) {
   return new Promise((res, rej) => {
@@ -14,7 +15,7 @@ async function extractPdfWithGemini(file) {
   const b64 = await fileToBase64(file);
   const res = await fetch("/api/ai/pdf", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: aiHeaders(),
     body: JSON.stringify({ mimeType: "application/pdf", data: b64 }),
   });
   const data = await res.json().catch(() => ({}));

@@ -33,18 +33,20 @@ function apiKey() {
   return (process.env.GEMINI_API_KEY || "").trim();
 }
 
-export function aiEnabled() {
-  return Boolean(apiKey());
+function requestGeminiKey(req) {
+  const header = String(req.headers["x-cf-gemini-key"] || "").trim();
+  if (header && header.length >= 20 && header.length < 256 && !/\s/.test(header)) return header;
+  return apiKey();
 }
 
-async function googleGenerate(body) {
-  const key = apiKey();
-  if (!key) {
-    const err = new Error("AI is not configured on the server.");
-    err.status = 503;
+async function googleGenerate(body, key) {
+  const useKey = String(key || "").trim();
+  if (!useKey) {
+    const err = new Error("Add your Gemini API key to continue.");
+    err.status = 401;
     throw err;
   }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(useKey)}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -88,14 +90,15 @@ export function attachAiRoutes(app) {
       },
     };
     if (search) body.tools = [{ googleSearch: {} }];
+    const key = requestGeminiKey(req);
     try {
       try {
-        const text = await googleGenerate(body);
+        const text = await googleGenerate(body, key);
         return res.json({ text });
       } catch (e) {
         if (search) {
           delete body.tools;
-          const text = await googleGenerate(body);
+          const text = await googleGenerate(body, key);
           return res.json({ text });
         }
         throw e;
@@ -113,6 +116,7 @@ export function attachAiRoutes(app) {
     const mimeType = req.body?.mimeType === "application/pdf" ? "application/pdf" : "";
     if (!data || !mimeType) return res.status(400).json({ error: "Missing PDF." });
     if (data.length > 18_000_000) return res.status(413).json({ error: "PDF is too large." });
+    const key = requestGeminiKey(req);
     try {
       const text = await googleGenerate({
         contents: [
@@ -140,7 +144,7 @@ Be exhaustive. Do not invent numbers.`,
           },
         ],
         generationConfig: { temperature: 0.1, maxOutputTokens: 16384 },
-      });
+      }, key);
       return res.json({ text });
     } catch (e) {
       return sendError(res, e);

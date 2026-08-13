@@ -52,6 +52,28 @@ export async function saveDeck({ remoteId, name, insights, slides, palette }) {
   return data.id;
 }
 
+export async function loadGeminiKey() {
+  const client = requireClient();
+  const { data: userData } = await client.auth.getUser();
+  const user = userData?.user;
+  if (!user) return "";
+  const { data } = await client.from("profiles").select("gemini_api_key").eq("id", user.id).maybeSingle();
+  return String(data?.gemini_api_key || user.user_metadata?.gemini_api_key || "").trim();
+}
+
+export async function saveGeminiKey(key) {
+  const client = requireClient();
+  const trimmed = String(key || "").trim();
+  const { data: userData } = await client.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not logged in");
+  const { error } = await client.from("profiles").update({ gemini_api_key: trimmed }).eq("id", user.id);
+  if (error) {
+    const { error: metaErr } = await client.auth.updateUser({ data: { gemini_api_key: trimmed } });
+    if (metaErr) throw error;
+  }
+}
+
 export async function deleteDeck(id) {
   const { error } = await requireClient().from("decks").delete().eq("id", id);
   if (error) throw error;

@@ -17,8 +17,9 @@ import SuggestView from "./components/SuggestView.jsx";
 import MarketingHome from "./components/MarketingHome.jsx";
 import { useAuth } from "./auth/useAuth.js";
 import AuthScreen from "./auth/AuthScreen.jsx";
-import { deleteDeck, listDecks, loadDeck, saveDeck } from "./lib/db.js";
-import { aiEnabled, AI_UNAVAILABLE } from "./lib/config.js";
+import { deleteDeck, listDecks, loadDeck, saveDeck, loadGeminiKey, saveGeminiKey } from "./lib/db.js";
+import { setRuntimeGeminiKey } from "./lib/runtimeKey.js";
+import OnboardView from "./components/OnboardView.jsx";
 
 function ChartCanvas({ chart, pal }) {
   const ref = useRef(null);
@@ -77,6 +78,12 @@ export default function App() {
   const [savedDecks, setSavedDecks] = useState([]);
   const [saveState, setSaveState] = useState("");
   const [view, setView] = useState("home");
+  const [authMode, setAuthMode] = useState("signup");
+  const [onboardStep, setOnboardStep] = useState("key");
+  const [userKey, setUserKey] = useState("");
+  const [keyDraft, setKeyDraft] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyError, setKeyError] = useState("");
   const [palette, setPalette] = useState("forge");
   const [deckPal, setDeckPal] = useState(null);
   const [suggestPack, setSuggestPack] = useState(null);
@@ -104,15 +111,23 @@ export default function App() {
   const insights = deck?.insights;
   const palettes = deckPal ? { ...PALETTES, deck: deckPal } : PALETTES;
   const activePal = palettes[palette] || PALETTES.forge;
-  const aiOn = aiEnabled();
+  const aiOn = Boolean(userKey);
 
   useEffect(() => {
-    try {
-      localStorage.removeItem("gk");
-    } catch {
-      /* ignore */
+    if (!user) {
+      setUserKey("");
+      setKeyDraft("");
+      setRuntimeGeminiKey("");
+      return;
     }
-  }, []);
+    loadGeminiKey()
+      .then((k) => {
+        setUserKey(k);
+        setKeyDraft(k);
+        setRuntimeGeminiKey(k);
+      })
+      .catch(() => {});
+  }, [user]);
 
   const patchSlide = (partial) => {
     setDeck((d) => {
@@ -129,6 +144,60 @@ export default function App() {
       subtitle: chart.subtitle ?? active?.subtitle,
       source: chart.source ?? active?.source,
     });
+  };
+
+  const beginFlow = () => {
+    if (!user) {
+      setAuthMode("signup");
+      setView("login");
+      return;
+    }
+    setOnboardStep(userKey ? "upload" : "key");
+    setView("onboard");
+  };
+
+  const afterAuth = async () => {
+    try {
+      const k = await loadGeminiKey();
+      setUserKey(k);
+      setKeyDraft(k);
+      setRuntimeGeminiKey(k);
+      setOnboardStep(k ? "upload" : "key");
+    } catch {
+      setOnboardStep("key");
+    }
+    setView("onboard");
+  };
+
+  const persistKey = async () => {
+    setSavingKey(true);
+    setKeyError("");
+    try {
+      const trimmed = keyDraft.trim();
+      if (!trimmed) throw new Error("Paste a Gemini API key.");
+      await saveGeminiKey(trimmed);
+      setUserKey(trimmed);
+      setRuntimeGeminiKey(trimmed);
+      setOnboardStep("upload");
+    } catch (e) {
+      setKeyError(e.message || "Could not save key");
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
+  const requireAi = () => {
+    if (!user) {
+      setAuthMode("signup");
+      setView("login");
+      return false;
+    }
+    if (!userKey) {
+      setOnboardStep("key");
+      setView("onboard");
+      return false;
+    }
+    return true;
   };
 
   const openDemo = (demo) => {
@@ -160,10 +229,7 @@ export default function App() {
 
   const loadMoreSuggestions = async () => {
     if (!deck) return;
-    if (!aiOn) {
-      setError(AI_UNAVAILABLE);
-      return;
-    }
+    if (!requireAi()) return;
     setMoreLoading(true);
     setError("");
     try {
@@ -206,10 +272,8 @@ export default function App() {
       setSelected(0);
       setSuggestPack(null);
       setView("suggest");
-      if (aiOn) {
-        setLoadMsg("Prefilling charts from the deck + industry data…");
-        await runSuggestions(imported);
-      }
+      setLoadMsg("Prefilling charts from the deck + industry data…");
+      await runSuggestions(imported);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -241,16 +305,28 @@ export default function App() {
         setLoadMsg("");
       }
     },
-    [aiOn]
+    [userKey]
   );
+
+  const handleFileList = async (list) => {
+    const files = [...list];
+    const pptx = files.find((f) => /\.(pptx|pptm)$/i.test(f.name));
+    const data = files.find((f) => /\.(csv|tsv|xlsx|xls|pdf|txt|md)$/i.test(f.name));
+    if (pptx) {
+      await handlePptx(pptx);
+      return;
+    }
+    if (data) {
+      await handleFile(data);
+      return;
+    }
+    setError("Use a PowerPoint, Excel, CSV, or PDF.");
+  };
 
   const generate = async () => {
     setError("");
     if (deck?.slides?.length && (brief.trim() || deck.slides.some((s) => (s.originalTexts || []).length))) {
-      if (!aiOn) {
-        setError(AI_UNAVAILABLE);
-        return;
-      }
+      if (!requireAi()) return;
       setLoading(true);
       setLoadMsg("Designing native exhibits onto your slides…");
       try {
@@ -286,10 +362,7 @@ export default function App() {
       setError("Upload a PPTX, drop data, or write a brief.");
       return;
     }
-    if (!aiOn) {
-      setError(AI_UNAVAILABLE);
-      return;
-    }
+    if (!requireAi()) return;
     setLoading(true);
     setView("studio");
     try {
@@ -319,10 +392,7 @@ export default function App() {
 
   const fillActive = async () => {
     if (!active) return;
-    if (!aiOn) {
-      setError(AI_UNAVAILABLE);
-      return;
-    }
+    if (!requireAi()) return;
     setLoading(true);
     setLoadMsg("Filling this slide…");
     try {
@@ -516,11 +586,14 @@ export default function App() {
           <div className="mark">C</div>
           <h1>ChartForge</h1>
         </div>
-        {(view === "suggest" || view === "studio") && (
+        {(view === "onboard" || view === "suggest" || view === "studio") && (
           <ol className="step-bar" aria-label="Workflow">
-            <li className="done">1 Upload</li>
-            <li className={view === "suggest" ? "current" : "done"}>2 Pick charts</li>
-            <li className={view === "studio" ? "current" : ""}>3 Edit & export</li>
+            <li className="done">1 Account</li>
+            <li className={view === "onboard" && onboardStep === "key" ? "current" : "done"}>2 Key</li>
+            <li className={view === "onboard" && onboardStep === "upload" ? "current" : view === "suggest" || view === "studio" ? "done" : ""}>
+              3 Upload
+            </li>
+            <li className={view === "suggest" ? "current" : view === "studio" ? "done" : ""}>4 Charts</li>
           </ol>
         )}
         <div className="top-actions">
@@ -536,8 +609,8 @@ export default function App() {
           )}
           <input ref={pptxRef} type="file" accept=".pptx,.pptm" hidden onChange={(e) => e.target.files[0] && handlePptx(e.target.files[0])} />
           {view === "home" && (
-            <button className="btn btn-sm btn-primary" onClick={() => pptxRef.current?.click()}>
-              Upload PPTX
+            <button className="btn btn-sm btn-primary" onClick={beginFlow}>
+              {user ? "Continue" : "Create account"}
             </button>
           )}
           {view === "suggest" && (
@@ -570,12 +643,17 @@ export default function App() {
               ← Home
             </button>
           )}
+          {view === "onboard" && (
+            <button className="btn btn-sm btn-ghost" onClick={() => setView("home")}>
+              ← Home
+            </button>
+          )}
           {user ? (
-            <button className="btn btn-sm btn-ghost" onClick={() => signOut()} title={user.email}>
+            <button className="btn btn-sm btn-ghost" onClick={() => { signOut(); setView("home"); }} title={user.email}>
               {user.email?.split("@")[0] || "Account"}
             </button>
           ) : view !== "login" ? (
-            <button className="btn btn-sm btn-ghost" onClick={() => setView("login")}>
+            <button className="btn btn-sm btn-ghost" onClick={() => { setAuthMode("login"); setView("login"); }}>
               Log in
             </button>
           ) : null}
@@ -586,16 +664,19 @@ export default function App() {
         <MarketingHome
           dragOver={dragOver}
           setDragOver={setDragOver}
-          onDropFile={(f) => handleFile(f)}
-          onUpload={() => pptxRef.current?.click()}
-          onLogin={() => setView("login")}
-          onStudio={() => (user ? setView("studio") : setView("login"))}
+          loggedIn={Boolean(user)}
+          onStart={beginFlow}
+          onLogin={() => { setAuthMode("login"); setView("login"); }}
+          onStudio={() => (user ? beginFlow() : (setAuthMode("signup"), setView("login")))}
           onLibrary={() => setLibraryOpen(true)}
           onDemo={openDemo}
           demos={DEMOS}
           onPlan={(name) => {
-            if (name === "Firm") window.location.href = "mailto:snghprakhar@gmail.com?subject=ChartForge%20Firm";
-            else setView("login");
+            if (name === "Platform") window.location.href = "mailto:snghprakhar@gmail.com?subject=ChartForge%20Platform";
+            else {
+              setAuthMode("signup");
+              setView("login");
+            }
           }}
         />
       )}
@@ -603,8 +684,27 @@ export default function App() {
       {view === "login" && (
         <AuthScreen
           variant="page"
+          initialMode={authMode}
           onClose={() => setView("home")}
-          onSuccess={() => setView("home")}
+          onSuccess={afterAuth}
+        />
+      )}
+
+      {view === "onboard" && (
+        <OnboardView
+          step={onboardStep}
+          userEmail={user?.email}
+          apiKey={keyDraft}
+          setApiKey={setKeyDraft}
+          onSaveKey={persistKey}
+          savingKey={savingKey}
+          keyError={keyError}
+          dragOver={dragOver}
+          setDragOver={setDragOver}
+          onFiles={handleFileList}
+          loading={loading}
+          loadMsg={loadMsg}
+          error={error}
         />
       )}
 
@@ -866,7 +966,7 @@ export default function App() {
         </div>
       )}
 
-      {authOpen && <AuthScreen onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthScreen initialMode="login" onClose={() => setAuthOpen(false)} onSuccess={() => { setAuthOpen(false); afterAuth(); }} />}
       {libraryOpen && (
         <div className="modal-bg" onClick={() => setLibraryOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>

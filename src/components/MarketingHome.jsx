@@ -27,9 +27,9 @@ const USE_CASES = [
 ];
 
 const STEPS = [
-  { n: "01", t: "Upload the pack", d: "Drop an IC, risk, or research PPTX. We read numbers, fonts, and colors." },
-  { n: "02", t: "Pick the charts", d: "We draft fans, attribution, matrices, and more. Click what you want to keep." },
-  { n: "03", t: "Edit and export", d: "Change types and values, then download native PowerPoint — not a screenshot." },
+  { n: "01", t: "Create an account", d: "Email and password in Supabase. Anyone can sign up — no invite, no waiting on us." },
+  { n: "02", t: "Add your Gemini key", d: "Your key, on your account only. We call Gemini with it. Other AIs are not wired up." },
+  { n: "03", t: "Upload, then charts", d: "PPTX, files, or a folder. We draft exhibits and you pick what to keep." },
 ];
 
 const COMPARE = [
@@ -68,7 +68,7 @@ const PLANS = [
 ];
 
 export default function MarketingHome({
-  onUpload,
+  onStart,
   onLogin,
   onStudio,
   onLibrary,
@@ -76,8 +76,8 @@ export default function MarketingHome({
   onPlan,
   dragOver,
   setDragOver,
-  onDropFile,
   demos,
+  loggedIn,
 }) {
   const featured = FEATURED_IDS.map((id) => CHART_TYPES.find((t) => t.id === id)).filter(Boolean);
 
@@ -87,7 +87,7 @@ export default function MarketingHome({
         <div className="eyebrow">Hedge funds · PMs · research</div>
         <h2>Hard charts from the deck you already have.</h2>
         <p>
-          Upload a PPTX. We draft fans, Brinson, matrices, and curves in your colors. You pick, edit, and export native PowerPoint.
+          Create an account, add your Gemini key, upload the pack. We draft the hard charts in your colors.
         </p>
         <div
           className={`hero-drop ${dragOver ? "over" : ""}`}
@@ -99,16 +99,23 @@ export default function MarketingHome({
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            const f = e.dataTransfer.files[0];
-            if (f) onDropFile(f);
+            onStart();
           }}
-          onClick={onUpload}
+          onClick={onStart}
         >
-          <div className="hero-drop-mark">1 · Upload</div>
-          <strong>Drop a PowerPoint</strong>
-          <span>Then pick charts, then download. Three steps.</span>
+          <div className="hero-drop-mark">{loggedIn ? "Continue" : "1 · Account"}</div>
+          <strong>{loggedIn ? "Continue to your workspace" : "Create an account to start"}</strong>
+          <span>Then Gemini key → upload PPTX or files → charts.</span>
         </div>
         <div className="hero-cta">
+          <button className="btn btn-primary" onClick={onStart}>
+            {loggedIn ? "Continue" : "Create account"}
+          </button>
+          {!loggedIn && (
+            <button className="btn btn-ghost" onClick={onLogin}>
+              Log in
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={onLibrary}>
             Browse chart types
           </button>

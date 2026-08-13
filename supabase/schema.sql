@@ -1,8 +1,11 @@
 -- ChartForge — run this in the Supabase SQL editor (once per project)
+-- Auth: Authentication → Providers → Email: turn OFF "Confirm email"
+-- so anyone can create an account with email + password and start immediately.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
   email text,
+  gemini_api_key text,
   created_at timestamptz default now()
 );
 
@@ -25,6 +28,12 @@ alter table public.decks enable row level security;
 drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile" on public.profiles
   for select using (auth.uid() = id);
+
+alter table public.profiles add column if not exists gemini_api_key text;
+
+drop policy if exists "insert own profile" on public.profiles;
+create policy "insert own profile" on public.profiles
+  for insert with check (auth.uid() = id);
 
 drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile" on public.profiles

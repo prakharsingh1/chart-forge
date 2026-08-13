@@ -90,15 +90,6 @@ export default function SuggestView({
         </div>
       </section>
 
-      {!aiOn && (
-        <div className="key-banner">
-          <div>
-            <strong>AI drafts are off</strong>
-            <p className="muted">You can still edit and export. The Gemini key lives on the server, not in this page.</p>
-          </div>
-        </div>
-      )}
-
       {loading && (
         <div className="suggest-load">
           <span className="spin" /> {loadMsg || "Designing exhibits…"}
