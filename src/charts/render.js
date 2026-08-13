@@ -665,6 +665,8 @@ export function renderGantt(container, data, pal) {
   });
 }
 
+import { EXTRA_RENDERERS } from "./extra.js";
+
 const RENDERERS = {
   waterfall: renderWaterfall,
   stacked_waterfall: renderStackedWaterfall,
@@ -672,15 +674,33 @@ const RENDERERS = {
   "100_stacked": (c, d, p, u) => renderStackedBar(c, d, p, u, true),
   horizontal_bar: renderHorizontalBar,
   grouped_bar: renderGroupedBar,
+  grouped_horizontal: renderGroupedBar,
+  stacked_horizontal: (c, d, p, u) => renderStackedBar(c, d, p, u, false),
+  "100_stacked_horizontal": (c, d, p, u) => renderStackedBar(c, d, p, u, true),
+  waterfall_horizontal: renderWaterfall,
   tornado: renderTornado,
+  diverging_bar: renderTornado,
+  population_pyramid: renderTornado,
   marimekko: renderMarimekko,
   line_trend: renderLineTrend,
+  step_line: renderLineTrend,
+  bump: renderLineTrend,
   area_stacked: renderAreaStacked,
+  area_100: renderAreaStacked,
+  streamgraph: renderAreaStacked,
   pie_donut: renderPieDonut,
+  nested_donut: (c, d, p) =>
+    renderPieDonut(c, { items: (d.series || d.items || []).map((s) => ({ label: s.name || s.label, value: s.value ?? d3.sum(s.values || []) })), donut: true }, p),
   scatter_bubble: renderScatter,
+  quadrant: (c, d, p) => renderScatter(c, { ...d, quadrants: true }, p),
+  hexbin: renderScatter,
+  connected_scatter: renderScatter,
+  histogram: renderHorizontalBar,
   combo: renderCombo,
   funnel: renderFunnel,
   gantt: renderGantt,
+  timeline: renderGantt,
+  ...EXTRA_RENDERERS,
 };
 
 export function renderChart(container, chart, pal) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PALETTES, CHART_TYPES } from "./theme.js";
+import { PALETTES, CHART_TYPES, CHART_CATS, chartMeta } from "./theme.js";
 import { extractTextFromFile } from "./lib/files.js";
 import { extractInsights, generateChartData, generateFromBrief, fillDeckSlides, fillOneSlide } from "./lib/ai.js";
 import { renderChart } from "./charts/render.js";
@@ -57,7 +57,7 @@ function SlideView({ slide, paletteKey, onPatch }) {
           onChange={(e) => onPatch({ source: e.target.value, chart: slide.chart ? { ...slide.chart, source: e.target.value } : slide.chart })}
           placeholder="Source:"
         />
-        <span>{slide.chart ? CHART_TYPES.find((t) => t.id === slide.chart.chartType)?.name : "Text slide"}</span>
+        <span>{slide.chart ? chartMeta(slide.chart.chartType).name : "Text slide"}</span>
       </div>
     </div>
   );
@@ -67,7 +67,10 @@ export default function App() {
   const [view, setView] = useState("home");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gk") || "");
   const [keySet, setKeySet] = useState(() => !!localStorage.getItem("gk"));
-  const [palette, setPalette] = useState("mckinsey");
+  const [palette, setPalette] = useState("forge");
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libQuery, setLibQuery] = useState("");
+  const [libCat, setLibCat] = useState("All");
   const [brief, setBrief] = useState("");
   const [file, setFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
@@ -317,18 +320,32 @@ export default function App() {
     if (svg) downloadSvg(svg, active?.title);
   };
 
+  const pickType = (type) => {
+    insertChart(type);
+    setLibraryOpen(false);
+  };
+
+  const visibleTypes = CHART_TYPES.filter((t) => {
+    const q = libQuery.trim().toLowerCase();
+    const hit = !q || t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q);
+    return hit && (libCat === "All" || t.cat === libCat);
+  });
+
   const charts = slides.map((s) => s.chart).filter(Boolean);
 
   return (
     <div className="app">
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <header className="topbar">
-        <div className="brand">
+        <div className="brand" onClick={reset}>
           <div className="mark">C</div>
           <h1>ChartForge</h1>
-          <span className="tag">Think-Cell competitor</span>
+          <span className="tag">{CHART_TYPES.length} charts</span>
         </div>
         <div className="top-actions">
+          <button className="btn btn-sm btn-primary" onClick={() => setLibraryOpen(true)}>
+            Chart library
+          </button>
           <input ref={pptxRef} type="file" accept=".pptx,.pptm" hidden onChange={(e) => e.target.files[0] && handlePptx(e.target.files[0])} />
           <button className="btn btn-sm" onClick={() => pptxRef.current?.click()}>
             Open PPTX
@@ -355,43 +372,57 @@ export default function App() {
       {view === "home" && (
         <>
           <section className="hero">
-            <h2>Think-Cell’s competitor: upload the deck, get McKinsey-grade charts you can still edit.</h2>
+            <div className="eyebrow">Flourish energy · Think-Cell depth · {CHART_TYPES.length} types</div>
+            <h2>Charts that look expensive. Built in a minute.</h2>
             <p>
-              Not pictures. Native PowerPoint charts and labeled shapes — values stay live. Change a number in the data
-              sheet here, or Edit Data in PowerPoint after export. Built for people who need BCG/Bain/McKinsey depth and
-              don’t have an afternoon to draw the waterfall.
+              The visual library B2B teams actually want — waterfalls, Mekkos, Sankeys, treemaps, cohorts — editable
+              values, native PowerPoint out.
             </p>
+            <div className="hero-cta">
+              <button className="btn btn-primary" onClick={() => setLibraryOpen(true)}>Browse {CHART_TYPES.length} charts</button>
+              <button className="btn" onClick={() => setView("studio")}>Open studio</button>
+              <button className="btn btn-ghost" onClick={() => pptxRef.current?.click()}>Drop a PPTX</button>
+            </div>
           </section>
-          <div className="paths four">
+          <div className="paths">
             <button className="path" onClick={() => pptxRef.current?.click()}>
-              <kbd>01 — PowerPoint</kbd>
-              <h3>Upload your PPTX</h3>
-              <p>We read every slide. AI pastes waterfalls, Mekkos, clustered bars onto the page. You edit every value.</p>
+              <kbd>Deck in</kbd>
+              <h3>Upload PowerPoint</h3>
+              <p>AI pastes exhibits onto your slides. Every number stays live.</p>
+            </button>
+            <button className="path" onClick={() => { setView("studio"); setLibraryOpen(true); }}>
+              <kbd>Library</kbd>
+              <h3>Pick a chart</h3>
+              <p>{CHART_TYPES.length} B2B-ready types. Click, edit the sheet, ship.</p>
             </button>
             <button className="path" onClick={() => setView("studio")}>
-              <kbd>02 — Brief</kbd>
-              <h3>Describe the exhibit</h3>
-              <p>Paste the so-what and the numbers. ChartForge builds a partner-ready slide with a live data sheet.</p>
-            </button>
-            <button
-              className="path"
-              onClick={() => {
-                setView("studio");
-                setTimeout(() => fileRef.current?.click(), 50);
-              }}
-            >
-              <kbd>03 — Data</kbd>
-              <h3>Excel, CSV, or PDF</h3>
-              <p>Extract the evidence, then auto-build the chart types MBB actually uses.</p>
+              <kbd>Brief</kbd>
+              <h3>Describe it</h3>
+              <p>Paste the so-what and the figures. We design the exhibit.</p>
             </button>
             <button className="path" onClick={() => openDemo(DEMOS[0])}>
-              <kbd>04 — Gallery</kbd>
-              <h3>Open a finished exhibit</h3>
-              <p>EBIT bridge, Mekko, Gantt, combo — edit the sheet, download a native PPTX.</p>
+              <kbd>Try</kbd>
+              <h3>EBIT bridge</h3>
+              <p>A finished McKinsey-style waterfall. Change a cell, watch it move.</p>
             </button>
           </div>
+          <section className="lib-home">
+            <h3>The library</h3>
+            <div className="lib-grid">
+              {CHART_TYPES.slice(0, 16).map((t) => (
+                <button key={t.id} className="type-card" onClick={() => { setView("studio"); pickType(t.id); }}>
+                  <div className="cat">{t.cat}</div>
+                  <h4>{t.name}</h4>
+                  <p>{t.desc}</p>
+                </button>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <button className="btn" onClick={() => setLibraryOpen(true)}>See all {CHART_TYPES.length} →</button>
+            </div>
+          </section>
           <section className="gallery">
-            <h3>Signature exhibits</h3>
+            <h3>Starter decks</h3>
             <div className="gallery-grid">
               {DEMOS.map((d) => (
                 <button key={d.id} className="demo-card" onClick={() => openDemo(d)}>
@@ -526,9 +557,10 @@ export default function App() {
             {!slides.length && !loading && (
               <div className="stage-head">
                 <div>
-                  <h2>Empty board</h2>
-                  <p>Open a PPTX, insert a blank clustered bar, or generate from a brief. Nothing is flattened to an image.</p>
+                  <h2>Blank canvas</h2>
+                  <p>Open the library, drop a deck, or generate from a brief. Values stay editable.</p>
                 </div>
+                <button className="btn btn-primary" onClick={() => setLibraryOpen(true)}>Chart library</button>
               </div>
             )}
 
@@ -574,28 +606,30 @@ export default function App() {
             {!active && <p className="muted">Select or add a slide.</p>}
             {active && (
               <>
-                <label className="muted">Chart type</label>
+                <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setLibraryOpen(true)}>
+                  {CHART_TYPES.length} chart types
+                </button>
+                <label className="muted" style={{ marginTop: 12 }}>Or jump to</label>
                 <select
                   className="field"
                   value={active.chart?.chartType || ""}
                   onChange={(e) => {
                     const t = e.target.value;
                     if (!t) return;
-                    if (!active.chart) insertChart(t);
-                    else patchChart({ ...active.chart, chartType: t });
+                    insertChart(t);
                   }}
                 >
-                  <option value="">Insert…</option>
+                  <option value="">Choose a chart…</option>
                   {CHART_TYPES.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name}
+                      {t.cat} · {t.name}
                     </option>
                   ))}
                 </select>
                 <div className="chips" style={{ marginTop: 8 }}>
-                  {["waterfall", "grouped_bar", "stacked_bar", "100_stacked", "marimekko", "combo", "gantt"].map((id) => (
+                  {["waterfall", "sankey", "treemap", "marimekko", "heatmap", "combo", "gantt"].map((id) => (
                     <button key={id} className="chip" onClick={() => insertChart(id)}>
-                      {CHART_TYPES.find((t) => t.id === id)?.name}
+                      {chartMeta(id).name}
                     </button>
                   ))}
                 </div>
@@ -630,6 +664,33 @@ export default function App() {
               </>
             )}
           </aside>
+        </div>
+      )}
+
+      {libraryOpen && (
+        <div className="modal-bg" onClick={() => setLibraryOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{CHART_TYPES.length} charts for B2B stories</h3>
+              <button className="btn btn-sm" onClick={() => setLibraryOpen(false)}>Close</button>
+            </div>
+            <input className="field" value={libQuery} onChange={(e) => setLibQuery(e.target.value)} placeholder="Search Sankey, waterfall, cohort…" />
+            <div className="chips" style={{ margin: "12px 0" }}>
+              <button className={`chip ${libCat === "All" ? "on" : ""}`} onClick={() => setLibCat("All")}>All</button>
+              {CHART_CATS.map((c) => (
+                <button key={c} className={`chip ${libCat === c ? "on" : ""}`} onClick={() => setLibCat(c)}>{c}</button>
+              ))}
+            </div>
+            <div className="lib-grid">
+              {visibleTypes.map((t) => (
+                <button key={t.id} className="type-card" onClick={() => { setView("studio"); pickType(t.id); }}>
+                  <div className="cat">{t.cat}</div>
+                  <h4>{t.name}</h4>
+                  <p>{t.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
