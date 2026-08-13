@@ -35,7 +35,10 @@ export function AuthProvider({ children }) {
               options: { emailRedirectTo: window.location.origin },
             })
           : Promise.resolve({ error: { message: "Supabase is not configured" } }),
-      signOut: () => (supabase ? supabase.auth.signOut() : Promise.resolve()),
+      signOut: async () => {
+        if (supabase) await supabase.auth.signOut();
+        setUser(null);
+      },
     }),
     [user, loading]
   );

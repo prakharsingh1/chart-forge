@@ -1,6 +1,29 @@
 # ChartForge
 
-B2B chart studio: 56 exhibit types, live data sheet, native PowerPoint export. Auth and deck storage on **Supabase**. Production host on **Railway**.
+B2B chart studio: 56 exhibit types, live data sheet, native PowerPoint export.
+
+Production: **Railway** serves the app. **Supabase** handles login, logout, and deck storage.
+
+## Railway (production)
+
+1. Create a [Supabase](https://supabase.com) project.
+2. Authentication → Providers → **Email** on. For faster first login, turn **Confirm email** off (or keep it on and add your Railway URL under Authentication → URL Configuration).
+3. SQL editor → run [`supabase/schema.sql`](supabase/schema.sql).
+4. Settings → API → copy **Project URL** and **anon public** key.
+5. [Deploy from GitHub on Railway](https://railway.com/new) → this repo (`prakharsingh1/chart-forge`), branch `main` or `cursor/thinkcell-ai-charts-dad9`.
+6. Service → Variables:
+
+```
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+Railway already sets `PORT`. Keys are read at **runtime** from `/config.js` — set them, then **restart** the service (no rebuild required).
+
+7. Settings → Networking → Generate domain.
+8. In Supabase: Authentication → URL Configuration → Site URL = `https://YOUR-APP.up.railway.app` and Redirect URLs = `https://YOUR-APP.up.railway.app/**`.
+
+Open the Railway URL. **Log in / Sign up** in the top bar. Decks autosave to the `decks` table (RLS: you only see your rows). **Log out** clears the session.
 
 ## Local
 
@@ -12,25 +35,3 @@ npm run dev
 ```
 
 Open http://127.0.0.1:5178/
-
-## Supabase (once)
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Authentication → Providers → Email on
-3. SQL editor → run `supabase/schema.sql`
-4. Settings → API → copy **Project URL** and **anon public** key
-
-## Railway
-
-1. New project → Deploy from GitHub (`chart-forge`, branch `cursor/thinkcell-ai-charts-dad9` or `main`)
-2. Variables (must be available at **build** time):
-
-```
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-PORT=8080
-```
-
-3. Generate domain. The Dockerfile builds the Vite app (bakes in those keys) and `node server/index.js` serves it.
-
-Log in / sign up in the product. Decks autosave to the `decks` table (RLS: you only see your rows). Log out from the top bar.

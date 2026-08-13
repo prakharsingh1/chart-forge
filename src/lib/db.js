@@ -1,7 +1,12 @@
 import { supabase } from "./supabase.js";
 
+function requireClient() {
+  if (!supabase) throw new Error("Supabase is not configured");
+  return supabase;
+}
+
 export async function listDecks() {
-  const { data, error } = await supabase
+  const { data, error } = await requireClient()
     .from("decks")
     .select("id, name, palette, updated_at, created_at")
     .order("updated_at", { ascending: false });
@@ -10,7 +15,7 @@ export async function listDecks() {
 }
 
 export async function loadDeck(id) {
-  const { data, error } = await supabase.from("decks").select("*").eq("id", id).single();
+  const { data, error } = await requireClient().from("decks").select("*").eq("id", id).single();
   if (error) throw error;
   const payload = data.payload || {};
   return {
@@ -23,6 +28,7 @@ export async function loadDeck(id) {
 }
 
 export async function saveDeck({ remoteId, name, insights, slides, palette }) {
+  const client = requireClient();
   const row = {
     name: name || "Untitled deck",
     palette: palette || "forge",
@@ -31,12 +37,13 @@ export async function saveDeck({ remoteId, name, insights, slides, palette }) {
     updated_at: new Date().toISOString(),
   };
   if (remoteId) {
-    const { data, error } = await supabase.from("decks").update(row).eq("id", remoteId).select("id").single();
+    const { data, error } = await client.from("decks").update(row).eq("id", remoteId).select("id").single();
     if (error) throw error;
     return data.id;
   }
-  const { data: userData } = await supabase.auth.getUser();
-  const { data, error } = await supabase
+  const { data: userData } = await client.auth.getUser();
+  if (!userData?.user?.id) throw new Error("Not logged in");
+  const { data, error } = await client
     .from("decks")
     .insert({ ...row, user_id: userData.user.id })
     .select("id")
@@ -46,6 +53,6 @@ export async function saveDeck({ remoteId, name, insights, slides, palette }) {
 }
 
 export async function deleteDeck(id) {
-  const { error } = await supabase.from("decks").delete().eq("id", id);
+  const { error } = await requireClient().from("decks").delete().eq("id", id);
   if (error) throw error;
 }
