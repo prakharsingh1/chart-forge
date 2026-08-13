@@ -38,7 +38,7 @@ export default function AuthScreen({ onClose, onSuccess, variant = "modal" }) {
         <p className="muted">
           {mode === "login"
             ? "Same email you used to sign up. Decks save to your Supabase workspace."
-            : "For consulting, corp strat, and IR teams. Takes under a minute."}
+            : "For hedge funds, PMs, risk, and research scientists. Takes under a minute."}
         </p>
       </div>
       {!configured && (
@@ -83,13 +83,13 @@ export default function AuthScreen({ onClose, onSuccess, variant = "modal" }) {
       <div className="auth-page">
         <div className="auth-side">
           <div className="mark">C</div>
-          <h2>The exhibit layer for serious decks.</h2>
+          <h2>The exhibit layer for desks that outrun Excel.</h2>
           <p>
-            Drop a PPTX. Get Think-Cell-quality charts prefilled from the file — fonts and colors included — plus
-            industry exhibits from the web.
+            Drop an IC or risk PPTX. Get fan charts, Brinson, correlation matrices, and ridgelines already filled —
+            fonts and colors from the deck, values still editable.
           </p>
           <ul>
-            <li>No spreadsheet rebuild on the first draft</li>
+            <li>Charts a scientist would draw, without the matplotlib day</li>
             <li>Native PowerPoint objects, not flattened images</li>
             <li>Team cloud save when you are logged in</li>
           </ul>

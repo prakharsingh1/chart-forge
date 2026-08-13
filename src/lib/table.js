@@ -95,6 +95,59 @@ export function chartToTable(chart) {
   if (shape === "bullet") {
     return { columns: ["Label", "Value", "Target"], rows: (d.items || []).map((it) => [it.label, it.value, it.target]) };
   }
+  if (shape === "fan") {
+    const labs = d.xLabels || [];
+    return {
+      columns: ["Period", "P10", "P50", "P90", "Actual"],
+      rows: labs.map((lab, i) => [lab, d.p10?.[i] ?? "", d.p50?.[i] ?? "", d.p90?.[i] ?? "", d.actual?.[i] ?? ""]),
+    };
+  }
+  if (shape === "underwater") {
+    const labs = d.xLabels || [];
+    const dd = d.drawdown || d.nav || d.values || [];
+    return { columns: ["Period", "Drawdown"], rows: labs.map((lab, i) => [lab, dd[i] ?? ""]) };
+  }
+  if (shape === "cum_bench") {
+    const labs = d.xLabels || [];
+    const fund = d.fund || d.series?.[0]?.values || [];
+    const bench = d.bench || d.series?.[1]?.values || [];
+    return { columns: ["Period", d.fundName || "Fund", d.benchName || "Benchmark"], rows: labs.map((lab, i) => [lab, fund[i] ?? "", bench[i] ?? ""]) };
+  }
+  if (shape === "brinson") {
+    return {
+      columns: ["Bucket", "Allocation", "Selection", "Interaction"],
+      rows: (d.categories || []).map((c, i) => [c, d.allocation?.[i] ?? "", d.selection?.[i] ?? "", d.interaction?.[i] ?? ""]),
+    };
+  }
+  if (shape === "long_short") {
+    return {
+      columns: ["Name", "Long", "Short"],
+      rows: (d.categories || []).map((c, i) => [c, d.long?.[i] ?? "", d.short?.[i] ?? ""]),
+    };
+  }
+  if (shape === "ohlc") {
+    return { columns: ["Bar", "Open", "High", "Low", "Close"], rows: (d.items || []).map((it) => [it.label, it.o, it.h, it.l, it.c]) };
+  }
+  if (shape === "ridgeline") {
+    const groups = d.groups || [];
+    const n = Math.max(1, ...groups.map((g) => (g.values || []).length));
+    return {
+      columns: ["Group", ...Array.from({ length: n }, (_, i) => `s${i + 1}`)],
+      rows: groups.map((g) => [g.label, ...(g.values || [])]),
+    };
+  }
+  if (shape === "corr") {
+    const rows = d.rows || d.labels || [];
+    return { columns: ["", ...rows], rows: rows.map((r, i) => [r, ...(d.values?.[i] || [])]) };
+  }
+  if (shape === "yield") {
+    const tenors = d.tenors || d.xLabels || [];
+    const series = d.series || [];
+    return { columns: ["Tenor", ...series.map((s) => s.name)], rows: tenors.map((t, i) => [t, ...series.map((s) => s.values?.[i] ?? "")]) };
+  }
+  if (shape === "forest") {
+    return { columns: ["Factor", "Estimate", "Low", "High"], rows: (d.items || []).map((it) => [it.label, it.value, it.low, it.high]) };
+  }
   return { columns: ["Key", "Value"], rows: Object.entries(d).map(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : v]) };
 }
 
@@ -167,6 +220,43 @@ export function tableToChartData(chart, columns, rows) {
     next.series = rows.map((r) => ({ name: String(r[0] ?? ""), values: r.slice(1).map(num) }));
   } else if (shape === "bullet") {
     next.items = rows.map((r) => ({ label: String(r[0] ?? ""), value: num(r[1]), target: num(r[2]) }));
+  } else if (shape === "fan") {
+    next.xLabels = rows.map((r) => String(r[0] ?? ""));
+    next.p10 = rows.map((r) => num(r[1]));
+    next.p50 = rows.map((r) => num(r[2]));
+    next.p90 = rows.map((r) => num(r[3]));
+    next.actual = rows.map((r) => (r[4] === "" || r[4] == null ? NaN : num(r[4])));
+  } else if (shape === "underwater") {
+    next.xLabels = rows.map((r) => String(r[0] ?? ""));
+    next.drawdown = rows.map((r) => num(r[1]));
+  } else if (shape === "cum_bench") {
+    next.xLabels = rows.map((r) => String(r[0] ?? ""));
+    next.fundName = columns[1] || "Fund";
+    next.benchName = columns[2] || "Benchmark";
+    next.fund = rows.map((r) => num(r[1]));
+    next.bench = rows.map((r) => num(r[2]));
+  } else if (shape === "brinson") {
+    next.categories = rows.map((r) => String(r[0] ?? ""));
+    next.allocation = rows.map((r) => num(r[1]));
+    next.selection = rows.map((r) => num(r[2]));
+    next.interaction = rows.map((r) => num(r[3]));
+  } else if (shape === "long_short") {
+    next.categories = rows.map((r) => String(r[0] ?? ""));
+    next.long = rows.map((r) => num(r[1]));
+    next.short = rows.map((r) => num(r[2]));
+  } else if (shape === "ohlc") {
+    next.items = rows.map((r) => ({ label: String(r[0] ?? ""), o: num(r[1]), h: num(r[2]), l: num(r[3]), c: num(r[4]) }));
+  } else if (shape === "ridgeline") {
+    next.groups = rows.map((r) => ({ label: String(r[0] ?? ""), values: r.slice(1).map(num) }));
+  } else if (shape === "corr") {
+    next.rows = rows.map((r) => String(r[0] ?? ""));
+    next.labels = next.rows;
+    next.values = rows.map((r) => r.slice(1).map(num));
+  } else if (shape === "yield") {
+    next.tenors = rows.map((r) => String(r[0] ?? ""));
+    next.series = columns.slice(1).map((name, i) => ({ name, values: rows.map((r) => num(r[i + 1])) }));
+  } else if (shape === "forest") {
+    next.items = rows.map((r) => ({ label: String(r[0] ?? ""), value: num(r[1]), low: num(r[2]), high: num(r[3]) }));
   }
   return next;
 }

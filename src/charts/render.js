@@ -666,6 +666,7 @@ export function renderGantt(container, data, pal) {
 }
 
 import { EXTRA_RENDERERS } from "./extra.js";
+import { FINANCE_RENDERERS } from "./finance.js";
 
 const RENDERERS = {
   waterfall: renderWaterfall,
@@ -701,6 +702,7 @@ const RENDERERS = {
   gantt: renderGantt,
   timeline: renderGantt,
   ...EXTRA_RENDERERS,
+  ...FINANCE_RENDERERS,
 };
 
 export function renderChart(container, chart, pal) {

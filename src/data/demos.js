@@ -1,5 +1,104 @@
 export const DEMOS = [
   {
+    id: "hf-nav-fan",
+    firm: "Hedge fund",
+    name: "NAV fan + drawdown",
+    blurb: "P10–P90 forecast vs realized, with the underwater that Excel never gets right.",
+    insights: {
+      title: "L/S equity book — path vs risk",
+      executive_summary:
+        "Realized NAV tracked the median until Feb. The left tail in the fan is the 2022-style drawdown the book already lived through.",
+      key_metrics: [
+        { name: "YTD NAV", value: "+12.4%", trend: "up" },
+        { name: "Max DD", value: "−16.1%", trend: "down" },
+        { name: "P10 8m", value: "81", trend: "down" },
+      ],
+      insights: [
+        "Actual sits on P50 through May; the fan widens as vol is not mean-reverting in the model.",
+        "Peak-to-trough −16.1% in 2022 is the risk the LP pack must show, not a line chart of levels.",
+      ],
+      source: "Source: Fund ops; ChartForge analysis",
+    },
+    charts: [
+      {
+        id: "fan1",
+        chartType: "fan_chart",
+        title: "Realized NAV hugged P50; the left tail is a 2022-sized hole",
+        subtitle: "NAV indexed 100, P10 / P50 / P90 vs actual, Jan–Aug",
+        insight: "Bands are model paths; dashed is booked NAV.",
+        source: "Source: Risk engine; fund ops",
+        unit: "",
+        data: {
+          xLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
+          p10: [98, 96, 94, 91, 89, 86, 84, 81],
+          p50: [100, 102, 105, 107, 110, 112, 116, 119],
+          p90: [103, 108, 114, 121, 128, 136, 144, 152],
+          actual: [100, 101, 104, 106, 108],
+        },
+      },
+      {
+        id: "uw1",
+        chartType: "underwater",
+        title: "The book is off the 2022 trough but has not made a new high yet",
+        subtitle: "Drawdown from peak NAV, %, 2019–2024",
+        insight: "Max DD −16.1%; recovery still incomplete vs the 2021 peak.",
+        source: "Source: Fund ops",
+        unit: "%",
+        data: {
+          xLabels: ["2019", "2020", "2021", "2022", "2023", "2024"],
+          drawdown: [0, 0, -3.6, -16.1, -9.8, -2.1],
+        },
+      },
+    ],
+  },
+  {
+    id: "hf-brinson",
+    firm: "Hedge fund",
+    name: "Brinson + long/short",
+    blurb: "Allocation vs selection, and which sleeve actually paid.",
+    insights: {
+      title: "Q2 attribution",
+      executive_summary: "Selection in tech paid; energy allocation was a drag. Shorts in banks did the risk work.",
+      key_metrics: [
+        { name: "Excess", value: "+64bp", trend: "up" },
+        { name: "Selection", value: "+52bp", trend: "up" },
+      ],
+      insights: ["Do not read the P&L as a sector bet — it was names inside tech."],
+      source: "Source: Attribution engine",
+    },
+    charts: [
+      {
+        id: "br1",
+        chartType: "brinson",
+        title: "Selection in tech, not the overweight, is the excess",
+        subtitle: "Brinson-Fachler, bp, Q2, L/S equity",
+        insight: "Alloc +38bp, select +52bp, interaction +8bp across buckets.",
+        source: "Source: Attribution engine",
+        unit: "bp",
+        data: {
+          categories: ["Tech", "Health", "Energy", "Financials", "Staples"],
+          allocation: [42, -18, 12, 8, -6],
+          selection: [31, 22, -14, 9, 4],
+          interaction: [6, -4, 3, -2, 1],
+        },
+      },
+      {
+        id: "ls1",
+        chartType: "long_short",
+        title: "Long software paid; the bank short is the hedge that worked",
+        subtitle: "Contribution to return, %, Q2",
+        insight: "Gross is not the story — the short sleeve is.",
+        source: "Source: P&L by name, aggregated",
+        unit: "%",
+        data: {
+          categories: ["Software", "Biotech", "Banks", "Energy", "Retail"],
+          long: [1.8, 1.1, 0.4, 0.7, 0.3],
+          short: [-0.6, -0.9, -1.2, -0.2, -0.5],
+        },
+      },
+    ],
+  },
+  {
     id: "ebit-bridge",
     firm: "McKinsey",
     name: "EBIT bridge",

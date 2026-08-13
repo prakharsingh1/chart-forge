@@ -142,6 +142,80 @@ const SHAPES = {
       { name: "Consumer", values: [18, 16] },
     ],
   }),
+  fan: () => ({
+    xLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
+    p10: [98, 96, 94, 91, 89, 86, 84, 81],
+    p50: [100, 102, 105, 107, 110, 112, 116, 119],
+    p90: [103, 108, 114, 121, 128, 136, 144, 152],
+    actual: [100, 101, 104, 106, 108],
+  }),
+  underwater: () => ({
+    xLabels: ["2019", "2020", "2021", "2022", "2023", "2024"],
+    nav: [100, 112, 108, 94, 101, 118],
+    drawdown: [0, 0, -3.6, -16.1, -9.8, 0],
+  }),
+  cum_bench: () => ({
+    xLabels: ["Y1", "Y2", "Y3", "Y4", "Y5", "Y6"],
+    fundName: "Fund",
+    benchName: "HFRI",
+    fund: [100, 112, 128, 119, 141, 158],
+    bench: [100, 108, 118, 109, 124, 132],
+  }),
+  brinson: () => ({
+    categories: ["Tech", "Health", "Energy", "Financials", "Staples"],
+    allocation: [42, -18, 12, 8, -6],
+    selection: [31, 22, -14, 9, 4],
+    interaction: [6, -4, 3, -2, 1],
+  }),
+  long_short: () => ({
+    categories: ["Software", "Biotech", "Banks", "Energy", "Retail"],
+    long: [1.8, 1.1, 0.4, 0.7, 0.3],
+    short: [-0.6, -0.9, -1.2, -0.2, -0.5],
+  }),
+  ohlc: () => ({
+    items: [
+      { label: "M", o: 102, h: 108, l: 101, c: 106 },
+      { label: "T", o: 106, h: 107, l: 99, c: 100 },
+      { label: "W", o: 100, h: 104, l: 98, c: 103 },
+      { label: "T", o: 103, h: 110, l: 102, c: 109 },
+      { label: "F", o: 109, h: 111, l: 105, c: 106 },
+    ],
+  }),
+  ridgeline: () => ({
+    groups: [
+      { label: "2019", values: [-0.4, 0.2, 0.8, 1.1, 0.3, -0.1, 0.6] },
+      { label: "2020", values: [-2.1, -0.8, 1.4, 2.2, 0.1, -1.1, 0.9] },
+      { label: "2021", values: [0.4, 0.9, 1.2, 0.7, 0.5, 0.8, 1.0] },
+      { label: "2022", values: [-1.6, -0.9, -0.2, 0.3, -1.1, 0.1, -0.4] },
+    ],
+  }),
+  corr: () => ({
+    rows: ["Eq", "Cr", "FX", "Cmd", "Rates"],
+    labels: ["Eq", "Cr", "FX", "Cmd", "Rates"],
+    values: [
+      [1, 0.62, 0.21, 0.34, -0.18],
+      [0.62, 1, 0.11, 0.28, 0.08],
+      [0.21, 0.11, 1, 0.19, 0.44],
+      [0.34, 0.28, 0.19, 1, 0.06],
+      [-0.18, 0.08, 0.44, 0.06, 1],
+    ],
+  }),
+  yield: () => ({
+    tenors: ["2Y", "5Y", "7Y", "10Y", "20Y", "30Y"],
+    series: [
+      { name: "Spot", values: [4.2, 4.0, 4.1, 4.25, 4.5, 4.55] },
+      { name: "1Y ago", values: [4.8, 4.4, 4.3, 4.2, 4.35, 4.4] },
+    ],
+  }),
+  forest: () => ({
+    items: [
+      { label: "Mkt", value: 0.92, low: 0.81, high: 1.04 },
+      { label: "SMB", value: 0.18, low: 0.02, high: 0.31 },
+      { label: "HML", value: -0.22, low: -0.38, high: -0.06 },
+      { label: "Mom", value: 0.11, low: -0.04, high: 0.27 },
+      { label: "Qual", value: 0.34, low: 0.19, high: 0.48 },
+    ],
+  }),
 };
 
 export function blankChart(type) {

@@ -628,6 +628,131 @@ function Timeline() {
     </S>
   );
 }
+function Fan() {
+  return (
+    <S>
+      <path d="M10 48 C 30 42, 50 30, 70 22 S 100 8, 110 12 L 110 52 C 90 48, 70 46, 50 50 S 20 54, 10 52 Z" className="t-a" opacity="0.28" />
+      <path d="M10 50 C 32 46, 54 40, 76 34 S 104 28, 110 26" fill="none" className="t-stroke-a" />
+      <path d="M10 48 C 30 44, 50 42, 62 40" fill="none" className="t-line" strokeDasharray="3 2" />
+    </S>
+  );
+}
+function Underwater() {
+  return (
+    <S>
+      <path d="M8 18 L 28 18 C 40 18, 44 38, 56 48 S 78 62, 96 40 L 112 22 L 112 66 L 8 66 Z" className="t-c" opacity="0.45" />
+      <path d="M8 18 L 28 18 C 40 18, 44 38, 56 48 S 78 62, 96 40 L 112 22" fill="none" className="t-stroke-c" />
+    </S>
+  );
+}
+function CumBench() {
+  return (
+    <S>
+      <path d="M10 58 L 30 48 L 50 42 L 70 46 L 90 28 L 110 18" fill="none" className="t-stroke-a" />
+      <path d="M10 58 L 30 52 L 50 46 L 70 50 L 90 40 L 110 34" fill="none" className="t-line" />
+    </S>
+  );
+}
+function YieldCurve() {
+  return (
+    <S>
+      <path d="M12 50 C 28 46, 44 38, 62 32 S 96 22, 110 20" fill="none" className="t-stroke-a" />
+      <path d="M12 42 C 28 40, 44 36, 62 34 S 96 30, 110 28" fill="none" className="t-stroke-b" />
+    </S>
+  );
+}
+function Ohlc() {
+  const bars = [
+    [18, 20, 52, 28, 40],
+    [38, 24, 48, 32, 26],
+    [58, 18, 44, 22, 36],
+    [78, 16, 50, 20, 30],
+    [98, 22, 46, 28, 40],
+  ];
+  return (
+    <S>
+      {bars.map(([x, top, bot, o, c], i) => (
+        <g key={x}>
+          <line x1={x + 5} x2={x + 5} y1={top} y2={bot} className="t-line" />
+          <rect x={x} y={Math.min(o, c)} width="10" height={Math.abs(c - o) || 4} className={i % 2 ? "t-c" : "t-a"} />
+        </g>
+      ))}
+    </S>
+  );
+}
+function Brinson() {
+  return (
+    <S>
+      {[0, 1, 2, 3].map((i) => (
+        <g key={i}>
+          <rect x={16 + i * 26} y={18} width="6" height="28" className="t-a" />
+          <rect x={24 + i * 26} y={28} width="6" height="22" className="t-b" />
+          <rect x={32 + i * 26} y={36} width="6" height="14" className="t-c" />
+        </g>
+      ))}
+      <line x1="12" y1="50" x2="112" y2="50" className="t-line" />
+    </S>
+  );
+}
+function LongShort() {
+  return (
+    <S>
+      {[0, 1, 2, 3].map((i) => (
+        <g key={i}>
+          <rect x="60" y={10 + i * 15} width={28 + i * 6} height="6" className="t-a" />
+          <rect x={60 - (22 + i * 8)} y={18 + i * 15} width={22 + i * 8} height="6" className="t-c" />
+        </g>
+      ))}
+      <line x1="60" y1="8" x2="60" y2="64" className="t-line" />
+    </S>
+  );
+}
+function Ridgeline() {
+  return (
+    <S>
+      {["M10 28 C 28 8, 50 8, 70 24 S 100 32, 110 28", "M10 42 C 30 24, 52 22, 74 38 S 100 46, 110 42", "M10 56 C 28 40, 54 38, 76 52 S 100 60, 110 56"].map((d, i) => (
+        <path key={i} d={d} fill="none" className={i === 0 ? "t-stroke-a" : i === 1 ? "t-stroke-b" : "t-stroke-c"} />
+      ))}
+    </S>
+  );
+}
+function Corr() {
+  const cells = [1, 0.6, 0.2, 0.6, 1, -0.3, 0.2, -0.3, 1];
+  return (
+    <S>
+      {cells.map((v, i) => (
+        <rect key={i} x={28 + (i % 3) * 22} y={10 + Math.floor(i / 3) * 18} width="20" height="16" rx="2" className={v > 0.5 ? "t-a" : v < 0 ? "t-c" : "t-b"} opacity={0.4 + Math.abs(v) * 0.5} />
+      ))}
+    </S>
+  );
+}
+function Forest() {
+  const rows = [
+    [22, 88, 54],
+    [30, 70, 48],
+    [18, 96, 72],
+    [40, 80, 52],
+  ];
+  return (
+    <S>
+      <line x1="58" y1="8" x2="58" y2="64" className="t-line" />
+      {rows.map(([a, b, m], i) => (
+        <g key={i}>
+          <line x1={a} y1={16 + i * 14} x2={b} y2={16 + i * 14} className="t-stroke-a" />
+          <rect x={m - 4} y={12 + i * 14} width="8" height="8" className="t-a" transform={`rotate(45 ${m} ${16 + i * 14})`} />
+        </g>
+      ))}
+    </S>
+  );
+}
+function Exposure() {
+  return (
+    <S>
+      <path d="M10 40 L 30 28 L 50 22 L 70 18 L 90 24 L 110 16 L 110 40 Z" className="t-a" opacity="0.55" />
+      <path d="M10 40 L 30 48 L 50 54 L 70 58 L 90 50 L 110 56 L 110 40 Z" className="t-c" opacity="0.55" />
+    </S>
+  );
+}
 
 const BY_ID = {
   grouped_bar: ClusteredCols,
@@ -686,6 +811,21 @@ const BY_ID = {
   progress_ring: Rings,
   gantt: Gantt,
   timeline: Timeline,
+  fan_chart: Fan,
+  var_fan: Fan,
+  underwater: Underwater,
+  cum_bench: CumBench,
+  rolling_metric: CumBench,
+  yield_curve: YieldCurve,
+  ohlc: Ohlc,
+  brinson: Brinson,
+  long_short: LongShort,
+  ridgeline: Ridgeline,
+  violin_returns: Ridgeline,
+  corr_matrix: Corr,
+  factor_heatmap: Corr,
+  forest: Forest,
+  exposure_stack: Exposure,
 };
 
 export default function ChartThumb({ type }) {

@@ -280,7 +280,7 @@ export default function App() {
       const ins = await extractInsights(apiKey, fileContent, brief);
       types = (ins.recommended_charts || []).map((c) => c.type).filter(Boolean).slice(0, 5);
       if (!types.length) types = ["waterfall", "grouped_bar"];
-      setLoadMsg("Building editable Think-Cell charts…");
+      setLoadMsg("Building editable desk charts…");
       const configs = await generateChartData(apiKey, fileContent, ins, types, customInstr, brief);
       setDeck(deckFromCharts(file?.name || "ChartForge deck.pptx", configs, ins));
       setSelected(0);
@@ -701,7 +701,7 @@ export default function App() {
               className="field"
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
-              placeholder="How you’d brief a Think-Cell operator: EBIT bridge FY23–24, start 370, volume +14, price +31…"
+              placeholder="Brief the desk: NAV fan P10/P50/P90, underwater from 2019, Brinson by sector…"
             />
 
             <h4>Data file</h4>
@@ -769,7 +769,7 @@ export default function App() {
               <div className="stage-head">
                 <div>
                   <h2>Blank canvas</h2>
-                  <p>Open the library, drop a deck, or generate from a brief. Values stay editable.</p>
+                  <p>Open the library for fans, Brinson, and matrices — or drop an IC pack. Values stay editable.</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setLibraryOpen(true)}>Chart library</button>
               </div>

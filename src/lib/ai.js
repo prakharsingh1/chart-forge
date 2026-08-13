@@ -34,20 +34,20 @@ export async function geminiCall(apiKey, prompt, temperature = 0.15, { search = 
   return text;
 }
 
-const DESIGN_RULES = `You are a former McKinsey EM / BCG principal who builds Think-Cell charts for partner-ready decks.
+const DESIGN_RULES = `You are a former hedge-fund risk PM and research scientist who builds institutional exhibits for IC, risk committee, and LP packs.
 
 CHART DESIGN LAW (never break):
-- Action title: the insight, not the chart type. "Price mix, not volume, drove 80% of EBIT growth" — not "EBIT waterfall".
-- Subtitle: units, time period, scope. "EBIT, $M, FY2019–FY2024, Group"
-- Source: "Source: Company filings; ChartForge analysis" or the real source.
+- Action title: the insight, not the chart type. "Selection, not allocation, drove 70bp of excess" — not "Brinson chart".
+- Subtitle: metric, unit, period, book/scope. "NAV, indexed 100, Jan-2019–Dec-2024, L/S equity"
+- Source: "Source: Fund ops; Bloomberg; ChartForge analysis" or the real source.
 - Use ONLY numbers present in the brief/data. Never invent figures. If a total is implied, compute it from given parts.
-- Every bar/point must have a label. Consulting charts are read without a legend if possible.
+- Every bar/point must have a label. Desk charts are read without a legend if possible.
+- Prefer HARD market charts when the data supports them: fan_chart, underwater, brinson, corr_matrix, ridgeline, yield_curve, ohlc, long_short, forest, cum_bench, rolling_metric, exposure_stack.
 - Waterfalls: first and last items type=total. Middle items increase/decrease. Totals must reconcile (start + steps = end).
 - Horizontal bars: sort descending.
 - 100% stacked: each category sums to 100.
-- Pie: max 6 slices + Other.
-- Line: include CAGR annotation when ≥3 periods.
-- Gantt: start/end are integer period indices matching axis labels.
+- Correlation matrix: square, diagonal = 1, values in [-1, 1].
+- Fan: p10 ≤ p50 ≤ p90; actual may be shorter than the forecast.
 - Titles ≤ 90 characters. Insight is one sentence.
 
 Valid chartType values: ${CHART_TYPES.map((t) => t.id).join(", ")}`;
@@ -67,7 +67,7 @@ ${
 Return ONLY JSON:
 {
   "title": "Engagement-style title",
-  "executive_summary": "2-3 sentences a partner would read",
+  "executive_summary": "2-3 sentences a PM or CRO would read",
   "key_metrics": [{"name":"","value":"with unit","trend":"up|down|stable"}],
   "insights": ["so-what 1","so-what 2","so-what 3","so-what 4"],
   "source": "Source line",
@@ -122,6 +122,17 @@ scatter_bubble: {"points":[{"label":"A","x":12,"y":8,"size":40}],"xLabel":"Share
 combo: {"categories":["Q1","Q2"],"bars":{"name":"Revenue","values":[100,120]},"line":{"name":"Margin %","values":[14,16]}}
 funnel: {"stages":[{"label":"Leads","value":10000},{"label":"SQL","value":2400},{"label":"Won","value":480}]}
 gantt: {"axis":["W1","W2","W3","W4","W5","W6"],"items":[{"label":"Diagnose","start":0,"end":2,"group":"Phase 1"},{"label":"Design","start":2,"end":5,"group":"Phase 2"}],"milestones":[{"label":"SteerCo","at":3}]}
+fan_chart / var_fan: {"xLabels":["Jan","Feb","Mar","Apr"],"p10":[98,96,94,91],"p50":[100,102,105,107],"p90":[104,110,118,126],"actual":[100,101,104]}
+underwater: {"xLabels":["2019","2020","2021","2022"],"drawdown":[0,-2.1,-8.4,-16.2]}
+cum_bench / rolling_metric: {"xLabels":["Y1","Y2","Y3"],"fundName":"Fund","benchName":"HFRI","fund":[100,112,128],"bench":[100,108,118]}
+brinson: {"categories":["Tech","Health","Energy"],"allocation":[12,-4,6],"selection":[18,9,-7],"interaction":[2,-1,1]}
+long_short: {"categories":["Software","Banks"],"long":[1.8,0.4],"short":[-0.6,-1.1]}
+ohlc: {"items":[{"label":"M","o":102,"h":108,"l":101,"c":106}]}
+ridgeline / violin_returns: {"groups":[{"label":"2019","values":[-0.4,0.2,0.8]},{"label":"2020","values":[-1.2,0.4,1.6]}]}
+corr_matrix / factor_heatmap: {"rows":["Eq","Cr","FX"],"values":[[1,0.4,0.1],[0.4,1,0.2],[0.1,0.2,1]]}
+yield_curve: {"tenors":["2Y","5Y","10Y","30Y"],"series":[{"name":"Spot","values":[4.2,4.0,4.25,4.55]}]}
+forest: {"items":[{"label":"Mkt","value":0.92,"low":0.81,"high":1.04}]}
+exposure_stack: {"xLabels":["Jan","Feb"],"series":[{"name":"Long","values":[80,90]},{"name":"Short","values":[-40,-50]}]}
 
 Generate exactly ${selectedTypes.length} charts. Numbers must reconcile.`;
 
@@ -156,7 +167,7 @@ export async function fillDeckSlides(apiKey, deck, brief = "", customInstr = "")
 
   const prompt = `${DESIGN_RULES}
 
-You are filling a live PowerPoint. Each slide must become a Think-Cell-quality exhibit with REAL numbers from that slide's text. Do not invent figures. If a slide has no quantitative content, skip it.
+You are filling a live PowerPoint. Each slide must become an institutional exhibit with REAL numbers from that slide's text. Do not invent figures. If a slide has no quantitative content, skip it.
 
 DECK SLIDES:
 ${JSON.stringify(catalog, null, 2)}
@@ -188,7 +199,7 @@ Return ONLY JSON:
   ]
 }
 
-Use the same data shapes as generateChartData. Skip agenda/divider/backup slides (skip: true). Prefer waterfall, stacked/clustered bar, 100% stacked, Mekko, combo, line+CAGR for MBB work.`;
+Use the same data shapes as generateChartData. Skip agenda/divider/backup slides (skip: true). Prefer fan_chart, underwater, brinson, corr_matrix, ridgeline, yield_curve, ohlc, long_short, forest, cum_bench, waterfall when the numbers fit.`;
 
   const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12));
   return parsed;
@@ -209,7 +220,7 @@ export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
     insights,
     types,
     brief,
-    `Fill this one PowerPoint slide with a consulting exhibit.\n${text}`
+    `Fill this one PowerPoint slide with a desk-quality market exhibit.\n${text}`
   );
   return charts[0];
 }
@@ -231,7 +242,7 @@ Return ONLY JSON:
 {
   "industry": "short industry name",
   "industry_why": "one sentence why you classified it",
-  "executive_summary": "2 sentences a partner would read",
+  "executive_summary": "2 sentences a PM would read",
   "key_metrics": [{"name":"","value":"","trend":"up|down|stable"}],
   "suggestions": [
     {
@@ -250,9 +261,9 @@ Return ONLY JSON:
 }
 
 Produce 8–10 suggestions:
-- At least 4 origin=deck (bridges, mix, ranked bars, combo from slide numbers)
-- At least 3 origin=web (industry growth, competitive share, TAM/CAGR — Think-Cell depth, detailed bars)
-Prefer waterfall, grouped_bar, stacked_bar, 100_stacked, marimekko, combo, line_trend, tornado, horizontal_bar.
+- At least 4 origin=deck (attribution, drawdown, mix, ranked contribution from slide numbers)
+- At least 3 origin=web (rates, vol, sector performance — labeled as web)
+Prefer fan_chart, underwater, brinson, corr_matrix, ridgeline, yield_curve, ohlc, long_short, forest, cum_bench, waterfall, grouped_bar.
 Use the data shapes from generateChartData. Numbers must reconcile.`;
 
   const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12, { search: true }));

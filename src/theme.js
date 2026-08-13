@@ -100,6 +100,21 @@ export const PALETTES = {
 };
 
 export const CHART_TYPES = [
+  { id: "fan_chart", name: "Fan / P10–P90", cat: "Markets", shape: "fan", desc: "Forecast bands vs realized" },
+  { id: "var_fan", name: "VaR fan", cat: "Risk", shape: "fan", desc: "Loss distribution through time" },
+  { id: "underwater", name: "Underwater drawdown", cat: "Risk", shape: "underwater", desc: "Peak-to-trough NAV" },
+  { id: "cum_bench", name: "Fund vs benchmark", cat: "Markets", shape: "cum_bench", desc: "Cumulative excess return" },
+  { id: "rolling_metric", name: "Rolling Sharpe / vol", cat: "Risk", shape: "cum_bench", desc: "Windowed risk metric" },
+  { id: "yield_curve", name: "Yield curve", cat: "Markets", shape: "yield", desc: "Tenor vs yield, multi-date" },
+  { id: "ohlc", name: "OHLC / candles", cat: "Markets", shape: "ohlc", desc: "Open-high-low-close bars" },
+  { id: "brinson", name: "Brinson attribution", cat: "Attribution", shape: "brinson", desc: "Alloc / select / interact" },
+  { id: "long_short", name: "Long / short book", cat: "Attribution", shape: "long_short", desc: "Contribution by sleeve" },
+  { id: "exposure_stack", name: "Gross / net exposure", cat: "Risk", shape: "line", desc: "Long, short, net over time" },
+  { id: "corr_matrix", name: "Correlation matrix", cat: "Quant", shape: "corr", desc: "Pairwise ρ, labeled" },
+  { id: "factor_heatmap", name: "Factor heatmap", cat: "Quant", shape: "corr", desc: "Loadings across books" },
+  { id: "ridgeline", name: "Ridgeline returns", cat: "Quant", shape: "ridgeline", desc: "Density by sleeve / year" },
+  { id: "violin_returns", name: "Return violins", cat: "Quant", shape: "ridgeline", desc: "Distribution comparison" },
+  { id: "forest", name: "Forest / factor CI", cat: "Quant", shape: "forest", desc: "Estimate with confidence bars" },
   { id: "grouped_bar", name: "Clustered columns", cat: "Bars", shape: "series", desc: "Side-by-side series" },
   { id: "stacked_bar", name: "Stacked columns", cat: "Bars", shape: "series", desc: "Mix across categories" },
   { id: "100_stacked", name: "100% stacked columns", cat: "Bars", shape: "series", desc: "Share that sums to 100%" },

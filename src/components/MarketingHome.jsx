@@ -1,65 +1,80 @@
 import { CHART_TYPES } from "../theme.js";
 import ChartThumb from "./ChartThumb.jsx";
 
+const FEATURED_IDS = [
+  "fan_chart",
+  "underwater",
+  "brinson",
+  "corr_matrix",
+  "ohlc",
+  "yield_curve",
+  "ridgeline",
+  "long_short",
+  "cum_bench",
+  "forest",
+  "exposure_stack",
+  "waterfall",
+];
+
 const USE_CASES = [
   {
-    tag: "Strategy consulting",
-    title: "Monday morning partner pack",
-    body: "A client sends last week’s PPTX. ChartForge reads the EBIT walk, mix, and share slides, then returns Think-Cell-grade exhibits already filled — ready to paste before the 10am readout.",
+    tag: "Hedge funds",
+    title: "IC memo that used to take two analysts a week",
+    body: "Drop last month’s risk pack. Get a P10–P90 NAV fan, an underwater drawdown, and a Brinson split already filled from the file — the charts PMs sketch on whiteboards and then lose a day building in Excel.",
   },
   {
-    tag: "Corporate strategy / PE",
-    title: "IC memo in one sitting",
-    body: "Drop the CIM or board deck. Get a market-growth bar, a share Mekko, and a value bridge that match the document’s colors and type. Associates stop rebuilding charts in Excel.",
+    tag: "Quant / research",
+    title: "Distributions, correlations, factor CIs — not bar charts",
+    body: "Ridgelines of sleeve returns, labeled correlation matrices, forest plots with intervals. The stuff a research scientist can describe and nobody on the desk can draw cleanly before the meeting.",
   },
   {
-    tag: "Industry research",
-    title: "EV, healthcare, SaaS — with web context",
-    body: "If the file is about electric vehicles, we suggest TAM/CAGR and competitive share from public sources, labeled separately from your confidential figures. Same for any vertical.",
+    tag: "Risk & exposure",
+    title: "Gross, net, beta, and the book that actually lost money",
+    body: "Long/short contribution, stacked exposure, rolling Sharpe. Theme colors come from the existing PPTX so the risk committee deck does not look like a different firm.",
   },
   {
-    tag: "IR & board",
-    title: "Same fonts as the rest of the book",
-    body: "Theme colors and typefaces come from the PPTX, so a new exhibit does not look like a clip-art insert. Export native PowerPoint objects or a PNG.",
+    tag: "Markets / rates / credit",
+    title: "Curves, candles, and forecasts that stay editable",
+    body: "Yield curves across dates, OHLC, VaR fans. Export native PowerPoint objects — values stay live, not a screenshot from Python.",
   },
 ];
 
 const STEPS = [
-  { n: "01", t: "Drop the PPTX", d: "We parse every slide, table fragment, color scheme, and font." },
-  { n: "02", t: "AI designs the exhibit", d: "Action titles, units, reconciled waterfalls. Industry charts use live web data." },
-  { n: "03", t: "Paste or download", d: "Native Office charts (Edit Data in PowerPoint) or a clean PNG. Values stay editable in studio." },
+  { n: "01", t: "Drop the pack", d: "IC memo, risk committee, or research PPTX. We read numbers, fonts, and colors." },
+  { n: "02", t: "We draw the hard exhibit", d: "Fan charts, attribution, matrices, ridgelines — designed, filled, labeled. Not a template you retype." },
+  { n: "03", t: "Paste into the book", d: "Native Office charts or PNG. Edit the sheet in studio the way you would in a real desk tool." },
 ];
 
 const COMPARE = [
-  ["How you start", "Blank chart + type the sheet", "Pretty template + type the sheet", "Drop the existing PPTX"],
-  ["Data entry", "Required", "Required", "Eliminated on first draft"],
-  ["Look", "McKinsey/BCG native", "Publishing / web", "Matches YOUR deck’s fonts & colors"],
-  ["Output", "PowerPoint objects", "Image / web", "Native PPTX + PNG"],
-  ["Industry context", "You research it", "You research it", "Suggested from the web, labeled"],
+  ["How you start", "Blank chart, type the sheet", "Python notebook + screenshot", "Drop the pack you already have"],
+  ["Hard charts", "Waterfalls, Mekkos", "You code it", "Fans, Brinson, corr, ridgelines, OHLC"],
+  ["Who it’s for", "Consultants", "Quants who can plot", "Funds, PMs, risk, scientists"],
+  ["Time to first exhibit", "Hours of data entry", "Hours of matplotlib", "Minutes, prefilled"],
+  ["Output", "PowerPoint objects", "PNG / HTML", "Native PPTX + PNG, theme-matched"],
 ];
 
 const PLANS = [
   {
-    name: "Studio",
+    name: "Desk",
     price: "$0",
     cadence: "to start",
-    points: ["3 decks / month", "All 56 chart types", "PPTX in · PNG / PPTX out", "Deck theme matching"],
+    points: [`${CHART_TYPES.length} chart types`, "PPTX in · PNG / PPTX out", "Fan, Brinson, corr, OHLC", "Deck theme matching"],
     cta: "Create account",
     featured: false,
   },
   {
-    name: "Team",
-    price: "$49",
+    name: "Fund",
+    price: "$79",
     cadence: "per user / month",
-    points: ["Unlimited decks", "Cloud save (Supabase)", "Industry + web exhibits", "Shared firm palettes", "Priority chart library"],
-    cta: "Start Team",
+    points: ["Unlimited packs", "Cloud save", "Web-grounded market context", "Shared desk palettes", "Priority quant library"],
+    cta: "Start Fund",
     featured: true,
   },
   {
-    name: "Firm",
+    name: "Platform",
     price: "Custom",
     cadence: "SSO · admin · SLA",
-    points: ["SAML / SSO", "Private model keys", "Usage analytics", "On-prem Gemini option", "Procurement-ready MSA"],
+    points: ["SAML / SSO", "Private model keys", "Usage analytics", "Air-gapped option", "Procurement-ready MSA"],
     cta: "Talk to us",
     featured: false,
   },
@@ -77,14 +92,17 @@ export default function MarketingHome({
   onDropFile,
   demos,
 }) {
+  const featured = FEATURED_IDS.map((id) => CHART_TYPES.find((t) => t.id === id)).filter(Boolean);
+
   return (
     <div className="mkt">
       <section className="hero" id="product">
-        <div className="eyebrow">The Think-Cell competitor that starts from the deck you already have</div>
-        <h2>Stop typing data into charts.</h2>
+        <div className="eyebrow">Complex market charts for hedge funds, PMs, and research scientists</div>
+        <h2>The exhibits nobody on the desk can finish by Monday.</h2>
         <p>
-          Consultants, corp strat, and IR teams lose hours rebuilding exhibits. ChartForge reads the PowerPoint,
-          keeps the fonts and colors, and returns partner-ready charts — prefilled, pasteable, not pictures.
+          Fan forecasts, underwater drawdowns, Brinson attribution, correlation matrices, yield curves, ridgeline
+          return distributions. ChartForge reads the pack you already have and draws the hard visualization — editable,
+          not a picture, in your fonts and colors.
         </p>
         <div
           className={`hero-drop ${dragOver ? "over" : ""}`}
@@ -102,8 +120,8 @@ export default function MarketingHome({
           onClick={onUpload}
         >
           <div className="hero-drop-mark">PPTX</div>
-          <strong>Drop a client or board deck</strong>
-          <span>We extract numbers, theme, and story. You paste into PowerPoint or download PNG.</span>
+          <strong>Drop an IC, risk, or research deck</strong>
+          <span>We extract the series, theme, and story. You paste a chart a scientist would recognize.</span>
         </div>
         <div className="hero-cta">
           <button className="btn btn-primary" onClick={onUpload}>
@@ -117,17 +135,17 @@ export default function MarketingHome({
           </button>
         </div>
         <div className="trust-row">
-          <span>McKinsey-style waterfalls</span>
-          <span>BCG Mekkos</span>
+          <span>P10–P90 fans</span>
+          <span>Brinson & long/short</span>
+          <span>Corr / factor matrices</span>
           <span>Native PPTX objects</span>
-          <span>Theme-matched type</span>
         </div>
       </section>
 
       <section className="mkt-band" id="solution">
         <div className="mkt-inner">
-          <p className="mkt-kicker">The operating system</p>
-          <h3>A framework, not a chart toy</h3>
+          <p className="mkt-kicker">Why this exists</p>
+          <h3>Excel and Think-Cell stop at bars. Your book does not.</h3>
           <div className="framework">
             {STEPS.map((s) => (
               <article key={s.n} className="fw-card">
@@ -143,7 +161,7 @@ export default function MarketingHome({
                 <tr>
                   <th />
                   <th>Think-Cell</th>
-                  <th>Flourish</th>
+                  <th>Python / Flourish</th>
                   <th className="on">ChartForge</th>
                 </tr>
               </thead>
@@ -165,8 +183,8 @@ export default function MarketingHome({
 
       <section className="mkt-band alt" id="use-cases">
         <div className="mkt-inner">
-          <p className="mkt-kicker">Used for</p>
-          <h3>Where the hours actually go</h3>
+          <p className="mkt-kicker">Desks we build for</p>
+          <h3>If it takes a scientist a day to plot, we ship it as a chart type</h3>
           <div className="use-grid">
             {USE_CASES.map((u) => (
               <article key={u.title} className="use-card">
@@ -180,10 +198,13 @@ export default function MarketingHome({
       </section>
 
       <section className="lib-home" id="library">
-        <h3>Every type, with a distinct picture</h3>
-        <p className="mkt-lead">56 consulting exhibits. Each thumbnail is the actual shape — clustered bars are not a copy of clustered columns.</p>
+        <h3>The hard library first</h3>
+        <p className="mkt-lead">
+          {CHART_TYPES.length} types. Fans, drawdowns, attribution, matrices, and curves sit in front — then the
+          consulting bars you still need for the appendix.
+        </p>
         <div className="lib-grid">
-          {CHART_TYPES.slice(0, 12).map((t) => (
+          {featured.map((t) => (
             <button key={t.id} className="type-card" onClick={onLibrary}>
               <ChartThumb type={t} />
               <div className="cat">{t.cat}</div>
@@ -215,7 +236,7 @@ export default function MarketingHome({
       <section className="mkt-band" id="pricing">
         <div className="mkt-inner">
           <p className="mkt-kicker">Pricing</p>
-          <h3>Pay when the team stops rebuilding charts</h3>
+          <h3>Pay when the desk stops rebuilding plots by hand</h3>
           <div className="price-grid">
             {PLANS.map((p) => (
               <article key={p.name} className={`price-card ${p.featured ? "featured" : ""}`}>
@@ -241,7 +262,7 @@ export default function MarketingHome({
       <footer className="mkt-foot">
         <div>
           <strong>ChartForge</strong>
-          <p>Think-Cell depth. Zero data entry on the first draft.</p>
+          <p>Hard market charts. Zero data entry on the first draft.</p>
         </div>
         <div className="mkt-foot-links">
           <button className="linkish" onClick={onStudio}>

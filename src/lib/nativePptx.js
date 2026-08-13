@@ -572,7 +572,7 @@ export async function exportNativeDeck(deck, paletteKey, customPal) {
   pptx.layout = "WIDE";
   pptx.author = "ChartForge";
   pptx.title = deck.name || "ChartForge deck";
-  pptx.subject = "Editable consulting charts (native Office objects, not images)";
+  pptx.subject = "Editable institutional charts (native Office objects, not images)";
 
   (deck.slides || []).forEach((s) => {
     const slide = pptx.addSlide();

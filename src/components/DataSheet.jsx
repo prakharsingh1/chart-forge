@@ -38,7 +38,7 @@ export default function DataSheet({ chart, onChange }) {
         >
           + Series
         </button>
-        <span className="muted">Click any cell. This is the Think-Cell sheet — PowerPoint export keeps values editable.</span>
+        <span className="muted">Click any cell. This is the live sheet — PowerPoint export keeps values editable.</span>
       </div>
       <div className="sheet">
         <table>
