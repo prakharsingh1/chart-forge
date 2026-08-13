@@ -18,6 +18,7 @@ import MarketingHome from "./components/MarketingHome.jsx";
 import { useAuth } from "./auth/useAuth.js";
 import AuthScreen from "./auth/AuthScreen.jsx";
 import { deleteDeck, listDecks, loadDeck, saveDeck } from "./lib/db.js";
+import { aiEnabled, AI_UNAVAILABLE } from "./lib/config.js";
 
 function ChartCanvas({ chart, pal }) {
   const ref = useRef(null);
@@ -76,8 +77,6 @@ export default function App() {
   const [savedDecks, setSavedDecks] = useState([]);
   const [saveState, setSaveState] = useState("");
   const [view, setView] = useState("home");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("gk") || "");
-  const [keySet, setKeySet] = useState(() => !!localStorage.getItem("gk"));
   const [palette, setPalette] = useState("forge");
   const [deckPal, setDeckPal] = useState(null);
   const [suggestPack, setSuggestPack] = useState(null);
@@ -105,16 +104,15 @@ export default function App() {
   const insights = deck?.insights;
   const palettes = deckPal ? { ...PALETTES, deck: deckPal } : PALETTES;
   const activePal = palettes[palette] || PALETTES.forge;
+  const aiOn = aiEnabled();
 
-  const saveKey = () => {
-    localStorage.setItem("gk", apiKey.trim());
-    setKeySet(true);
-  };
-  const clearKey = () => {
-    localStorage.removeItem("gk");
-    setApiKey("");
-    setKeySet(false);
-  };
+  useEffect(() => {
+    try {
+      localStorage.removeItem("gk");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const patchSlide = (partial) => {
     setDeck((d) => {
@@ -145,12 +143,12 @@ export default function App() {
     setView("studio");
   };
 
-  const runSuggestions = async (imported, key) => {
+  const runSuggestions = async (imported) => {
     const corpus = deckCorpus(imported);
     const industryHint = guessIndustry(corpus);
     setLoadMsg(`Detecting ${industryHint} exhibits…`);
     try {
-      const pack = await suggestFromDeck(key, { corpus, industryHint, fileName: imported.name });
+      const pack = await suggestFromDeck({ corpus, industryHint, fileName: imported.name });
       setSuggestPack(pack);
       if (pack.executive_summary) {
         setDeck((d) => (d ? { ...d, insights: { ...pack, title: imported.name } } : d));
@@ -162,15 +160,14 @@ export default function App() {
 
   const loadMoreSuggestions = async () => {
     if (!deck) return;
-    const key = apiKey.trim() || localStorage.getItem("gk") || "";
-    if (!key) {
-      setError("Add a Gemini key to load more exhibits.");
+    if (!aiOn) {
+      setError(AI_UNAVAILABLE);
       return;
     }
     setMoreLoading(true);
     setError("");
     try {
-      const more = await suggestMoreFromDeck(key, {
+      const more = await suggestMoreFromDeck({
         corpus: deckCorpus(deck),
         industryHint: suggestPack?.industry || guessIndustry(deckCorpus(deck)),
         fileName: deck.name || file?.name,
@@ -209,10 +206,9 @@ export default function App() {
       setSelected(0);
       setSuggestPack(null);
       setView("suggest");
-      const key = apiKey.trim() || localStorage.getItem("gk") || "";
-      if (key) {
+      if (aiOn) {
         setLoadMsg("Prefilling charts from the deck + industry data…");
-        await runSuggestions(imported, key);
+        await runSuggestions(imported);
       }
     } catch (e) {
       setError(e.message);
@@ -234,7 +230,7 @@ export default function App() {
       setLoadMsg("Reading file…");
       setLoading(true);
       try {
-        const content = await extractTextFromFile(f, apiKey);
+        const content = await extractTextFromFile(f);
         if (!content.text && !content.data?.length) throw new Error("Nothing extractable in that file.");
         setFileContent(content);
         setView("studio");
@@ -245,20 +241,20 @@ export default function App() {
         setLoadMsg("");
       }
     },
-    [apiKey]
+    [aiOn]
   );
 
   const generate = async () => {
     setError("");
     if (deck?.slides?.length && (brief.trim() || deck.slides.some((s) => (s.originalTexts || []).length))) {
-      if (!keySet || !apiKey.trim()) {
-        setError("Add a Gemini key to fill the deck. You can still insert blank charts and type values.");
+      if (!aiOn) {
+        setError(AI_UNAVAILABLE);
         return;
       }
       setLoading(true);
       setLoadMsg("Designing native exhibits onto your slides…");
       try {
-        const filled = await fillDeckSlides(apiKey, deck, brief, customInstr);
+        const filled = await fillDeckSlides(deck, brief, customInstr);
         setDeck((d) => {
           const slidesNext = d.slides.map((s, i) => {
             const hit = (filled.slides || []).find((x) => x.index === i);
@@ -290,8 +286,8 @@ export default function App() {
       setError("Upload a PPTX, drop data, or write a brief.");
       return;
     }
-    if (!keySet || !apiKey.trim()) {
-      setError("Add a Gemini API key to generate. Gallery and blank charts work without one.");
+    if (!aiOn) {
+      setError(AI_UNAVAILABLE);
       return;
     }
     setLoading(true);
@@ -300,17 +296,17 @@ export default function App() {
       let types = [];
       if (brief.trim() && !fileContent) {
         setLoadMsg("Designing the deck from your brief…");
-        const out = await generateFromBrief(apiKey, brief, types, customInstr);
+        const out = await generateFromBrief(brief, types, customInstr);
         setDeck(deckFromCharts("ChartForge deck.pptx", out.charts, out.insights));
         setSelected(0);
         return;
       }
       setLoadMsg("Extracting the so-what…");
-      const ins = await extractInsights(apiKey, fileContent, brief);
+      const ins = await extractInsights(fileContent, brief);
       types = (ins.recommended_charts || []).map((c) => c.type).filter(Boolean).slice(0, 5);
       if (!types.length) types = ["waterfall", "grouped_bar"];
       setLoadMsg("Building editable desk charts…");
-      const configs = await generateChartData(apiKey, fileContent, ins, types, customInstr, brief);
+      const configs = await generateChartData(fileContent, ins, types, customInstr, brief);
       setDeck(deckFromCharts(file?.name || "ChartForge deck.pptx", configs, ins));
       setSelected(0);
     } catch (e) {
@@ -323,14 +319,14 @@ export default function App() {
 
   const fillActive = async () => {
     if (!active) return;
-    if (!keySet) {
-      setError("Add a Gemini key to AI-fill this slide, or insert a blank chart and type the values.");
+    if (!aiOn) {
+      setError(AI_UNAVAILABLE);
       return;
     }
     setLoading(true);
     setLoadMsg("Filling this slide…");
     try {
-      const chart = await fillOneSlide(apiKey, active, brief || customInstr, "");
+      const chart = await fillOneSlide(active, brief || customInstr, "");
       patchSlide({
         chart,
         title: chart.title,
@@ -620,19 +616,7 @@ export default function App() {
           loading={loading}
           loadMsg={loadMsg}
           error={error}
-          keySet={keySet}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          onSaveKey={() => {
-            saveKey();
-            if (deck) {
-              setLoading(true);
-              runSuggestions(deck, apiKey.trim()).finally(() => {
-                setLoading(false);
-                setLoadMsg("");
-              });
-            }
-          }}
+          aiOn={aiOn}
           onOpenStudio={() => setView("studio")}
           onAddAll={addAllSuggestions}
           onOpenChart={openSuggestion}
@@ -643,7 +627,7 @@ export default function App() {
             setLoading(true);
             setError("");
             try {
-              await runSuggestions(deck, apiKey.trim() || localStorage.getItem("gk"));
+              await runSuggestions(deck);
             } catch (e) {
               setError(e.message);
             } finally {
@@ -706,40 +690,6 @@ export default function App() {
             </button>
             {studioMore && (
               <>
-                {!keySet && (
-                  <>
-                    <h4>Gemini API key</h4>
-                    <div className="key-row">
-                      <input
-                        className="field"
-                        type="password"
-                        placeholder="AIza…"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && apiKey.trim() && saveKey()}
-                      />
-                      <button className="btn btn-primary" onClick={saveKey} disabled={!apiKey.trim()}>
-                        Save
-                      </button>
-                    </div>
-                    <p className="muted" style={{ marginTop: 8 }}>
-                      AI fill needs a{" "}
-                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-                        Gemini
-                      </a>{" "}
-                      key. Charts still edit offline.
-                    </p>
-                  </>
-                )}
-                {keySet && (
-                  <p className="muted">
-                    Gemini key saved.{" "}
-                    <button className="linkish" type="button" onClick={clearKey}>
-                      Change
-                    </button>
-                  </p>
-                )}
-
                 <h4>Cloud</h4>
                 {!user && (
                   <p className="muted">

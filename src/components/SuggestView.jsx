@@ -50,10 +50,7 @@ export default function SuggestView({
   loading,
   loadMsg,
   error,
-  keySet,
-  onSaveKey,
-  apiKey,
-  setApiKey,
+  aiOn,
   onOpenStudio,
   onAddAll,
   onOpenChart,
@@ -85,7 +82,7 @@ export default function SuggestView({
           <button className="btn btn-ghost" onClick={onOpenStudio}>
             Skip — original slides
           </button>
-          {keySet && (
+          {aiOn && (
             <button className="btn btn-ghost" onClick={onRetry} disabled={loading}>
               Re-run AI
             </button>
@@ -93,17 +90,11 @@ export default function SuggestView({
         </div>
       </section>
 
-      {!keySet && (
+      {!aiOn && (
         <div className="key-banner">
           <div>
-            <strong>Gemini key needed for AI charts</strong>
-            <p className="muted">Paste a key once. It stays in this browser.</p>
-          </div>
-          <div className="key-row">
-            <input className="field" type="password" placeholder="AIza…" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-            <button className="btn btn-primary" onClick={onSaveKey} disabled={!apiKey.trim()}>
-              Save & generate
-            </button>
+            <strong>AI drafts are off</strong>
+            <p className="muted">You can still edit and export. The Gemini key lives on the server, not in this page.</p>
           </div>
         </div>
       )}
@@ -145,7 +136,7 @@ export default function SuggestView({
         })}
       </div>
 
-      {keySet && (
+      {aiOn && (
         <div className="suggest-more">
           <button className="btn" onClick={onLoadMore} disabled={moreLoading || loading}>
             {moreLoading ? (

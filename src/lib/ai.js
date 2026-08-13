@@ -3,37 +3,16 @@ import { CHART_TYPES } from "../theme.js";
 import { normalizeChartData } from "./chartData.js";
 import { upgradeSuggestion, dropEmpty } from "./quality.js";
 
-const MODEL = "gemini-2.5-pro";
-
-function partsText(data) {
-  return (data?.candidates?.[0]?.content?.parts || [])
-    .map((p) => p.text || "")
-    .join("");
-}
-
-export async function geminiCall(apiKey, prompt, temperature = 0.15, { search = false } = {}) {
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature, maxOutputTokens: 16384 },
-  };
-  if (search) body.tools = [{ googleSearch: {} }];
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  if (!res.ok) {
-    if (search) return geminiCall(apiKey, prompt, temperature, { search: false });
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e?.error?.message || `Gemini error ${res.status}`);
-  }
-  const data = await res.json();
-  const text = partsText(data);
-  if (!text) throw new Error("Empty model response");
-  return text;
+export async function geminiCall(prompt, temperature = 0.15, { search = false } = {}) {
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, temperature, search }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `AI error ${res.status}`);
+  if (!data.text) throw new Error("Empty model response");
+  return data.text;
 }
 
 const DESIGN_RULES = `You are a McKinsey/BCG exhibit designer AND a buy-side research scientist. You never ship a toy chart. Every exhibit must look like it belongs in an IC memo or a partner pack — dense, labeled, reconciled.
@@ -105,7 +84,7 @@ hexbin: {"points":[{"x":1,"y":2},{"x":1.2,"y":2.1},{"x":0.8,"y":1.7}]}
 chord: {"labels":["Eq","Cr","FX"],"matrix":[[0,12,4],[12,0,6],[4,6,0]]}
 streamgraph: {"xLabels":["A","B","C"],"series":[{"name":"X","values":[10,12,9]},{"name":"Y","values":[8,6,11]}]}`;
 
-export async function extractInsights(apiKey, fc, brief = "") {
+export async function extractInsights(fc, brief = "") {
   const prompt = `${DESIGN_RULES}
 
 ${brief ? `USER BRIEF:\n${brief}\n` : ""}
@@ -129,10 +108,10 @@ Return ONLY JSON:
     {"type":"waterfall","title":"action title","why":"why this chart","priority":1}
   ]
 }`;
-  return parseJsonLoose(await geminiCall(apiKey, prompt, 0.1));
+  return parseJsonLoose(await geminiCall( prompt, 0.1));
 }
 
-export async function generateChartData(apiKey, fc, insights, selectedTypes, customInstr, brief = "") {
+export async function generateChartData(fc, insights, selectedTypes, customInstr, brief = "") {
   const prompt = `${DESIGN_RULES}
 
 CONTEXT: ${insights?.executive_summary || ""}
@@ -165,7 +144,7 @@ ${DATA_SHAPES}
 
 Generate exactly ${selectedTypes.length} charts. Numbers must reconcile.`;
 
-  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12));
+  const parsed = parseJsonLoose(await geminiCall( prompt, 0.12));
   const list = Array.isArray(parsed) ? parsed : parsed.charts || [parsed];
   return list.map((c, i) => ({
     ...c,
@@ -175,14 +154,13 @@ Generate exactly ${selectedTypes.length} charts. Numbers must reconcile.`;
   }));
 }
 
-export async function generateFromBrief(apiKey, brief, selectedTypes, customInstr) {
-  const insights = await extractInsights(apiKey, { text: brief, data: [], columns: [], type: "document" }, brief);
+export async function generateFromBrief(brief, selectedTypes, customInstr) {
+  const insights = await extractInsights({ text: brief, data: [], columns: [], type: "document" }, brief);
   const types =
     selectedTypes?.length
       ? selectedTypes
       : (insights.recommended_charts || []).map((c) => c.type).slice(0, 4);
   const charts = await generateChartData(
-    apiKey,
     { text: brief, data: [], columns: [], type: "document" },
     insights,
     types.length ? types : ["waterfall", "stacked_bar"],
@@ -192,7 +170,7 @@ export async function generateFromBrief(apiKey, brief, selectedTypes, customInst
   return { insights, charts };
 }
 
-export async function fillDeckSlides(apiKey, deck, brief = "", customInstr = "") {
+export async function fillDeckSlides(deck, brief = "", customInstr = "") {
   const catalog = (deck.slides || []).map((s, i) => ({
     index: i,
     title: s.title,
@@ -236,11 +214,11 @@ Return ONLY JSON:
 
 Use the same data shapes as generateChartData. Skip agenda/divider/backup slides (skip: true). Prefer fan_chart, underwater, brinson, corr_matrix, ridgeline, yield_curve, ohlc, long_short, forest, cum_bench, waterfall when the numbers fit.`;
 
-  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.12));
+  const parsed = parseJsonLoose(await geminiCall( prompt, 0.12));
   return parsed;
 }
 
-export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
+export async function fillOneSlide(slide, brief = "", chartType = "") {
   const text = [slide.title, slide.subtitle, slide.body, ...(slide.originalTexts || [])].join("\n");
   const types = chartType ? [chartType] : ["grouped_bar"];
   const insights = {
@@ -250,7 +228,6 @@ export async function fillOneSlide(apiKey, slide, brief = "", chartType = "") {
     extracted_data: [],
   };
   const charts = await generateChartData(
-    apiKey,
     { text, data: [], columns: [], type: "document" },
     insights,
     types,
@@ -279,7 +256,7 @@ function hydrateSuggestion(s, i, prefix = "sug") {
   });
 }
 
-export async function suggestFromDeck(apiKey, { corpus, industryHint, fileName }) {
+export async function suggestFromDeck({ corpus, industryHint, fileName }) {
   const prompt = `${DESIGN_RULES}
 
 The user dropped a PowerPoint. They must NOT type data. You extract numbers from the deck AND enrich with current industry facts via web search.
@@ -324,7 +301,7 @@ Produce exactly 10 partner-grade exhibits that COVER THE WHOLE DECK (cost bridge
 Every suggestion MUST include a complete "data" object in the shape above so the preview can draw.
 Numbers must reconcile.`;
 
-  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.22, { search: true }));
+  const parsed = parseJsonLoose(await geminiCall( prompt, 0.22, { search: true }));
   const suggestions = parsed.suggestions || parsed.charts || [];
   return {
     industry: parsed.industry || industryHint || "",
@@ -335,7 +312,7 @@ Numbers must reconcile.`;
   };
 }
 
-export async function suggestMoreFromDeck(apiKey, { corpus, industryHint, fileName, existing = [] }) {
+export async function suggestMoreFromDeck({ corpus, industryHint, fileName, existing = [] }) {
   const used = existing.map((s) => s.chartType).filter(Boolean);
   const titles = existing.map((s) => s.title).filter(Boolean).slice(0, 12);
   const prompt = `${DESIGN_RULES}
@@ -359,7 +336,7 @@ ${DATA_SHAPES}
 Return ONLY JSON: { "suggestions": [ { "origin":"deck|web", "why":"", "id":"m1", "chartType":"", "title":"", "subtitle":"", "insight":"", "source":"", "unit":"", "data":{} } ] }
 Every item needs a complete data object.`;
 
-  const parsed = parseJsonLoose(await geminiCall(apiKey, prompt, 0.18, { search: true }));
+  const parsed = parseJsonLoose(await geminiCall( prompt, 0.18, { search: true }));
   const suggestions = (parsed.suggestions || parsed.charts || [])
     .filter((s) => !used.includes(s.chartType || s.type))
     .map((s, i) => hydrateSuggestion(s, i, "more"))
